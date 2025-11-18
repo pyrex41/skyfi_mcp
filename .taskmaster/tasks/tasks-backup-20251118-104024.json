@@ -1,0 +1,160 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Initialize Phoenix Project",
+        "description": "Set up a new Phoenix project in API mode without HTML/CSS assets, using Elixir and Phoenix 1.7+.",
+        "details": "Run `mix new skyfi_mcp --no-html` to create the project structure. Add dependencies: Tesla for HTTP client, Jason for JSON handling. Configure the project for API-only mode. Ensure the lib/ structure matches the reference: skyfi_mcp/ for business logic, skyfi_mcp_web/ for controllers. Pseudo-code: mix new skyfi_mcp --no-html; cd skyfi_mcp; mix deps.get.",
+        "testStrategy": "Verify project compiles and starts with `mix phx.server`, check that no web assets are generated.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Implement Generic MCP JSON-RPC Handler",
+        "description": "Create a module to handle JSON-RPC 2.0 messages as per MCP spec, including parsing and schema validation for tool inputs.",
+        "details": "In lib/skyfi_mcp/mcp_protocol/, create a module for JSON-RPC parsing. Use Jason for serialization. Define JSON schemas for each tool input (e.g., AOI as GeoJSON). Implement a handler that validates inputs before processing. Pseudo-code: defmodule MCPProtocol do; def parse_request(json) do; # parse and validate end; end.",
+        "testStrategy": "Unit tests with ExUnit to verify parsing of valid/invalid JSON-RPC messages and schema validation failures.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Implement SSE Controller for Transport",
+        "description": "Build a Phoenix controller for Server-Sent Events (SSE) over HTTP at route /mcp/sse to support remote MCP sessions.",
+        "details": "In lib/skyfi_mcp_web/controllers/, create an SSE controller. Use Phoenix Channels or direct SSE implementation for real-time transport. Handle stdio fallback if needed. Ensure concurrency with GenServer per session. Pseudo-code: defmodule MCPController do; def sse(conn, _params) do; # setup SSE stream end; end.",
+        "testStrategy": "Integration test by connecting a client to /mcp/sse and verifying event streaming; use tools like curl or a test client.",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Create SkyfiClient Module",
+        "description": "Develop a Tesla-based client module to wrap SkyFi Public API calls, including authentication middleware for API key passthrough.",
+        "details": "In lib/skyfi_mcp/skyfi_client/, create a module with Tesla client configured for SkyFi API. Add middleware for API key auth (from session/env). Implement functions for each API endpoint (search, feasibility, etc.). Pseudo-code: defmodule SkyfiClient do; use Tesla; def search_archive(params) do; # Tesla post to SkyFi API end; end.",
+        "testStrategy": "Mock SkyFi API responses in tests to verify authentication and data parsing; check for correct API key handling.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Implement search_archive Tool",
+        "description": "Expose the search_archive tool via MCP, taking AOI, date range, cloud cover, and returning image IDs with metadata.",
+        "details": "In lib/skyfi_mcp/tools/, create a module for search_archive. Integrate with SkyfiClient to call SkyFi API. Normalize GeoJSON inputs. Output list of images. Pseudo-code: defmodule Tools.SearchArchive do; def execute(params) do; SkyfiClient.search_archive(params) end; end.",
+        "testStrategy": "Test via MCP protocol with sample AOI; verify output matches expected metadata format using Claude Desktop or a test agent.",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          3,
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Implement check_feasibility Tool",
+        "description": "Expose the check_feasibility tool, inputting AOI, date range, sensor type, outputting success probability and pass times.",
+        "details": "In lib/skyfi_mcp/tools/, add check_feasibility module. Use SkyfiClient for API call. Handle Optical/SAR sensor types. Pseudo-code: defmodule Tools.CheckFeasibility do; def execute(params) do; SkyfiClient.check_feasibility(params) end; end.",
+        "testStrategy": "Validate with known AOI data; check probability calculations and pass times via MCP interface.",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          3,
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Implement get_price_estimate Tool",
+        "description": "Expose get_price_estimate tool for tasking parameters or image ID, returning cost breakdown.",
+        "details": "In lib/skyfi_mcp/tools/, create get_price_estimate. Call SkyfiClient for pricing. Handle both archive and tasking inputs. Pseudo-code: defmodule Tools.GetPriceEstimate do; def execute(params) do; SkyfiClient.get_price_estimate(params) end; end.",
+        "testStrategy": "Test with sample parameters; verify cost estimates match SkyFi API responses through MCP.",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          3,
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Implement place_order Tool with Safety",
+        "description": "Expose place_order tool requiring price confirmation, outputting order ID and status URL, with human-in-the-loop for high prices.",
+        "details": "In lib/skyfi_mcp/tools/, add place_order. Require confirm_price parameter. Integrate with SkyfiClient. Add logic for approval if price > threshold. Pseudo-code: defmodule Tools.PlaceOrder do; def execute(params) do; if params.confirm_price, do: SkyfiClient.place_order(params) end; end.",
+        "testStrategy": "Simulate orders with confirmation; verify error for unconfirmed high prices; check order creation via MCP.",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          3,
+          4,
+          7
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Add Error Handling and list_orders Tool",
+        "description": "Implement error mapping for SkyFi API errors to MCP messages, and add list_orders tool for order history.",
+        "details": "Enhance all tools with error handling (4xx/5xx to MCP errors). Add list_orders in tools/. Pseudo-code: In each tool, wrap calls with try/rescue, map errors. defmodule Tools.ListOrders do; def execute(params) do; SkyfiClient.list_orders(params) end; end.",
+        "testStrategy": "Induce API errors (e.g., invalid key) and verify MCP returns friendly messages; test list_orders output.",
+        "priority": "medium",
+        "dependencies": [
+          5,
+          6,
+          7,
+          8
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Documentation and Deployment Setup",
+        "description": "Write README with Claude Desktop setup, create Dockerfile for deployment, and prepare for demo.",
+        "details": "Create README.md with installation and usage instructions. Build Dockerfile for Fly.io/Render. Ensure logging for tool invocations. Pseudo-code: Dockerfile: FROM elixir:1.14; # build steps.",
+        "testStrategy": "Verify README instructions work for setup; deploy to test environment and run full MCP flow.",
+        "priority": "low",
+        "dependencies": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-11-18T16:18:40.528Z",
+      "updated": "2025-11-18T16:18:40.528Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

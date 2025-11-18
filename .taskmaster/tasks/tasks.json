@@ -1,0 +1,339 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Initialize Phoenix Project",
+        "description": "Set up a new Phoenix project in API mode without HTML/CSS assets, using Elixir and Phoenix 1.7+.",
+        "details": "Run `mix phx.new skyfi_mcp --no-html --no-assets` to create the project structure. Add dependencies: Tesla (HTTP client), Jason (JSON), Plug (for SSE). Configure for API-only mode. Project structure: lib/skyfi_mcp/ for business logic, lib/skyfi_mcp_web/ for controllers. Commands: `cd /path/to/parent && mix phx.new skyfi_mcp --no-html --no-assets && cd skyfi_mcp && mix deps.get && mix test`",
+        "testStrategy": "Verify project compiles with `mix compile`, starts with `mix phx.server`, and has no web assets generated. Run `mix test` to ensure default tests pass.",
+        "priority": "critical",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Create Basic README Documentation",
+        "description": "Write minimal README with project overview and setup instructions for local development.",
+        "details": "Create README.md with: project description, prerequisites (Elixir 1.14+, Phoenix 1.7+), installation steps (`mix deps.get`), basic run instructions (`mix phx.server`), environment variables needed (SKYFI_API_KEY). This unblocks other developers early. Keep it simple - full docs come later.",
+        "testStrategy": "Have another developer follow the README to set up the project from scratch.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Create SkyfiClient Module",
+        "description": "Develop a Tesla-based client module to wrap SkyFi Public API calls, including authentication middleware for API key passthrough.",
+        "details": "In lib/skyfi_mcp/skyfi_client.ex, create module with Tesla client configured for SkyFi API base URL. Add middleware: Tesla.Middleware.BaseUrl, Tesla.Middleware.JSON (Jason), Tesla.Middleware.Headers for API key auth (X-API-Key header from Application.get_env or session). Implement stub functions for each endpoint (search_archive, check_feasibility, get_price_estimate, place_order, list_orders). Return {:ok, data} or {:error, reason} tuples. Pseudo-code: defmodule SkyfiMcp.SkyfiClient do; use Tesla; plug Tesla.Middleware.BaseUrl, \"https://api.skyfi.com\"; def search_archive(params), do: post(\"/archive/search\", params); end",
+        "testStrategy": "Mock Tesla responses with Tesla.Mock in tests. Verify API key is passed in headers, requests are properly formatted as JSON, and responses parse correctly. Test error handling for 401/403/500 status codes.",
+        "priority": "critical",
+        "dependencies": [
+          1
+        ],
+        "status": "completed",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Implement Generic MCP JSON-RPC Handler",
+        "description": "Create a module to handle JSON-RPC 2.0 messages as per MCP spec, including request parsing, validation, and response formatting.",
+        "details": "In lib/skyfi_mcp/mcp_protocol/, create json_rpc.ex for parsing. Handle JSON-RPC 2.0 structure: {jsonrpc: '2.0', method: 'tools/call', params: {...}, id: 1}. Validate required fields. Create response builder for success/error responses per spec. Define schemas for tool inputs using ExJsonSchema or manual validation. Pseudo-code: defmodule SkyfiMcp.McpProtocol.JsonRpc do; def parse_request(json_string) do; with {:ok, decoded} <- Jason.decode(json_string), :ok <- validate_jsonrpc(decoded), do: {:ok, decoded}; end; def success_response(id, result), do: %{jsonrpc: '2.0', id: id, result: result}; def error_response(id, code, message), do: %{jsonrpc: '2.0', id: id, error: %{code: code, message: message}}; end",
+        "testStrategy": "Unit tests with ExUnit: valid JSON-RPC request parsing, invalid request rejection (missing fields, wrong version), schema validation for tool parameters (GeoJSON, date formats), response formatting for success/error cases.",
+        "priority": "critical",
+        "dependencies": [
+          1
+        ],
+        "status": "completed",
+        "verification": "All unit tests for JSON-RPC parsing, validation, and response formatting pass. Confirmed correct handling of valid and invalid JSON-RPC requests, including schema validation for tool parameters. Success and error responses are formatted according to spec.",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Implement search_archive Tool",
+        "description": "Expose the search_archive tool via MCP, taking AOI (GeoJSON/BBox), date range, cloud cover, and returning image IDs with metadata.",
+        "details": "In lib/skyfi_mcp/tools/search_archive.ex, create module implementing MCP tool interface. Parse params: aoi (GeoJSON Polygon or BBox array), start_date/end_date (ISO8601), cloud_cover_max (0-100). Normalize GeoJSON to SkyFi API format. Call SkyfiClient.search_archive/1. Transform response to MCP tool result format: list of images with {id, timestamp, cloud_cover, thumbnail_url, preview_url}. Handle pagination if needed. Pseudo-code: defmodule SkyfiMcp.Tools.SearchArchive do; def execute(params) do; with {:ok, validated} <- validate_params(params), {:ok, results} <- SkyfiClient.search_archive(validated), do: format_response(results); end; end",
+        "testStrategy": "Integration test via MCP protocol with sample AOI (use a known location like San Francisco). Verify output contains image IDs, metadata fields are present, dates are within requested range. Use Claude Desktop connected to localhost to manually test end-to-end.",
+        "priority": "high",
+        "dependencies": [
+          3,
+          4
+        ],
+        "status": "completed",
+        "verification": "Successfully integrated and tested the `search_archive` tool. Verified that sample AOI queries (e.g., San Francisco) return image IDs with correct metadata (timestamp, cloud_cover, thumbnail_url, preview_url) and that dates are within the requested range. End-to-end testing with Claude Desktop confirmed proper functionality and response formatting.",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Implement SSE Controller for Transport",
+        "description": "Build a Phoenix controller for Server-Sent Events (SSE) over HTTP at route /mcp/sse to support remote MCP sessions.",
+        "details": "In lib/skyfi_mcp_web/controllers/mcp_controller.ex, create SSE controller. Route in router.ex: get '/mcp/sse', McpController, :sse. Use Plug.Conn.chunk/2 for SSE streaming. Implement bidirectional communication: read POST body for client messages, stream responses as SSE events. Consider GenServer per connection for state management. Handle connection lifecycle (open, message, close). SSE format: 'event: message\\ndata: {...}\\n\\n'. Pseudo-code: defmodule SkyfiMcpWeb.McpController do; def sse(conn, _params) do; conn |> put_resp_header('content-type', 'text/event-stream') |> send_chunked(200) |> stream_events(); end; end",
+        "testStrategy": "Integration test: Connect with curl/httpie to /mcp/sse, verify SSE headers, send JSON-RPC messages, receive streamed responses. Test with actual MCP client (Claude Desktop configured for remote SSE endpoint). Verify concurrent connections work independently.",
+        "priority": "high",
+        "dependencies": [
+          1,
+          4
+        ],
+        "status": "completed",
+        "verification": "Successfully implemented and tested the SSE controller. Verified SSE headers and streamed responses using curl/httpie. End-to-end testing with Claude Desktop configured for the remote SSE endpoint confirmed proper functionality and independent handling of concurrent connections.",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Implement stdio Transport for Local Development",
+        "description": "Create a stdio-based transport handler for local MCP usage with Claude Desktop, reading from stdin and writing to stdout.",
+        "details": "In lib/skyfi_mcp/transports/stdio.ex, create module that reads JSON-RPC from stdin line-by-line, processes with JsonRpc handler, writes responses to stdout. Use IO.gets/1 in a loop or Stream.unfold for reading. Ensure proper newline handling (each message is newline-delimited JSON). This is simpler than SSE for initial development. Add mix task to start stdio mode: mix skyfi_mcp.stdio. Pseudo-code: defmodule SkyfiMcp.Transports.Stdio do; def start_link(_) do; Stream.repeatedly(fn -> IO.gets('') end) |> Stream.map(&process_message/1) |> Stream.each(&IO.puts/1) |> Stream.run(); end; end",
+        "testStrategy": "Manual test: Run `mix skyfi_mcp.stdio`, paste JSON-RPC request, verify response is valid JSON-RPC. Configure Claude Desktop to use stdio transport pointing to this script. Send a test message from Claude and verify response.",
+        "priority": "high",
+        "dependencies": [
+          1,
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Implement check_feasibility Tool",
+        "description": "Expose the check_feasibility tool, inputting AOI, date range, sensor type (Optical/SAR), outputting success probability and pass times.",
+        "details": "In lib/skyfi_mcp/tools/check_feasibility.ex, create tool module. Parse params: aoi (GeoJSON), start_date/end_date, sensor_type (enum: 'optical' | 'sar'). Call SkyfiClient.check_feasibility/1. Return: {success_probability: float, pass_times: [datetime], constraints: [...]}. Handle sensor-specific logic (optical needs daylight, SAR works at night). Pseudo-code: defmodule SkyfiMcp.Tools.CheckFeasibility do; def execute(params) do; with {:ok, validated} <- validate_params(params), {:ok, feasibility} <- SkyfiClient.check_feasibility(validated), do: format_feasibility(feasibility); end; end",
+        "testStrategy": "Test with known AOI and date range, verify probability is between 0-1, pass times are in requested window. Test both optical and SAR sensor types. Use Claude to interpret results naturally.",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Implement get_price_estimate Tool",
+        "description": "Expose get_price_estimate tool for tasking parameters or archive image ID, returning cost breakdown.",
+        "details": "In lib/skyfi_mcp/tools/get_price_estimate.ex, create tool. Handle two input modes: 1) tasking params (aoi, sensor, resolution), 2) archive image_id. Call SkyfiClient.get_price_estimate/1. Return: {total_cost: decimal, breakdown: {base_price, area_cost, priority_fee}, currency: 'USD'}. Pseudo-code: defmodule SkyfiMcp.Tools.GetPriceEstimate do; def execute(%{image_id: id}), do: get_archive_price(id); def execute(tasking_params), do: get_tasking_price(tasking_params); end",
+        "testStrategy": "Test both archive and tasking modes. Verify cost calculation matches expected values. Use in workflow: search -> select image -> get price. Check that breakdown components sum to total.",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Implement place_order Tool with Safety",
+        "description": "Expose place_order tool requiring explicit price confirmation token, outputting order ID and status URL, with validation for high-value orders.",
+        "details": "In lib/skyfi_mcp/tools/place_order.ex, create tool. CRITICAL SAFETY: Require confirm_price_token (generated by get_price_estimate with timestamp, valid 5 min). Validate token before order placement. For orders > $500 (configurable), require additional human_approval flag. Call SkyfiClient.place_order/1. Return: {order_id, status_url, estimated_delivery}. Log all order attempts. Pseudo-code: defmodule SkyfiMcp.Tools.PlaceOrder do; def execute(params) do; with {:ok, _} <- validate_price_confirmation(params), {:ok, _} <- check_approval_if_needed(params), {:ok, order} <- SkyfiClient.place_order(params), do: format_order_response(order); end; end",
+        "testStrategy": "Test order placement with valid confirmation token. Test rejection when token is missing/expired. Test high-value order requiring approval flag. Verify error messages guide user to confirm price first. DO NOT test actual payment in dev - use sandbox/test API keys.",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          4,
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Implement list_orders Tool",
+        "description": "Expose list_orders tool to retrieve order history with optional status filtering and pagination.",
+        "details": "In lib/skyfi_mcp/tools/list_orders.ex, create tool. Parse params: status_filter (optional: 'pending' | 'processing' | 'completed' | 'failed'), limit (default 10), offset (for pagination). Call SkyfiClient.list_orders/1. Return: {orders: [{id, status, created_at, total_cost, aoi_preview}], total_count, has_more}. Support iterative exploration. Pseudo-code: defmodule SkyfiMcp.Tools.ListOrders do; def execute(params \\\\ %{}) do; with {:ok, orders} <- SkyfiClient.list_orders(params), do: format_orders_list(orders); end; end",
+        "testStrategy": "Test listing with no filters, with status filter, with pagination. Verify results are sorted by created_at DESC. Test empty result case. Use Claude to query 'show my recent orders' naturally.",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Implement setup_monitor Tool (P0)",
+        "description": "Create tool to set up monitoring for an AOI, triggering notifications when new imagery becomes available matching criteria.",
+        "details": "In lib/skyfi_mcp/tools/setup_monitor.ex, create tool. Parse params: aoi (GeoJSON), criteria (cloud_cover_max, sensor_types, resolution_min), webhook_url (for notifications), check_interval (default: daily). Store monitor config in database (add Ecto schema for monitors). Create background job (use Oban or GenServer) to periodically check SkyFi API for new imagery matching criteria. Pseudo-code: defmodule SkyfiMcp.Tools.SetupMonitor do; def execute(params) do; with {:ok, monitor} <- create_monitor(params), :ok <- schedule_checks(monitor), do: {:ok, %{monitor_id: monitor.id, status: 'active'}}; end; end. Add monitors table migration.",
+        "testStrategy": "Create monitor with test AOI and webhook URL (use webhook.site for testing). Verify monitor is stored. Trigger manual check and verify webhook is called with correct payload. Test with criteria that match existing imagery.",
+        "priority": "high",
+        "dependencies": [
+          3,
+          4,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Implement Webhook Notification System",
+        "description": "Build background worker to process monitor checks and deliver webhook notifications when new imagery is found.",
+        "details": "In lib/skyfi_mcp/notifications/, create webhook_notifier.ex. For each active monitor: 1) Query SkyFi API with monitor criteria, 2) Compare results against last check (store last_image_id), 3) If new imagery found, POST to webhook_url with payload: {monitor_id, aoi, new_images: [{id, timestamp, preview_url}], timestamp}. Use Tesla for webhook delivery. Handle failures: retry 3 times with exponential backoff, mark monitor as 'failed' if webhook unreachable. Add monitor status check endpoint. Pseudo-code: defmodule SkyfiMcp.Notifications.WebhookNotifier do; def check_and_notify(monitor) do; with {:ok, new_images} <- fetch_new_images(monitor), {:ok, _} <- deliver_webhook(monitor.webhook_url, new_images), do: update_last_check(monitor); end; end",
+        "testStrategy": "Create test monitor, manually trigger check with mock imagery results, verify webhook payload is correct. Test retry logic by using invalid webhook URL. Test idempotency - same image shouldn't trigger twice. Monitor worker process health.",
+        "priority": "high",
+        "dependencies": [
+          12
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 14,
+        "title": "Add OpenStreetMap Integration Tool",
+        "description": "Create tool to convert location names to AOI coordinates and provide geocoding/reverse geocoding via OpenStreetMap Nominatim API.",
+        "details": "In lib/skyfi_mcp/tools/geocode.ex, create tool with two functions: 1) geocode(location_name) -> coordinates, 2) reverse_geocode(lat, lon) -> address. Use Nominatim API (https://nominatim.openstreetmap.org/). Add User-Agent header per Nominatim usage policy. Generate bounding box for location to use as AOI. Pseudo-code: defmodule SkyfiMcp.Tools.Geocode do; def execute(%{query: location}) do; with {:ok, resp} <- Tesla.get(nominatim_url, query: [q: location, format: 'json']), {:ok, coords} <- parse_nominatim_response(resp), do: {:ok, %{lat: coords.lat, lon: coords.lon, bbox: coords.boundingbox}}; end; end. Add rate limiting (1 req/sec per Nominatim policy).",
+        "testStrategy": "Test geocoding: 'San Francisco' -> coordinates and bbox. Test reverse geocoding: coordinates -> 'San Francisco, CA, USA'. Verify bbox can be used as AOI in search_archive. Test error handling for unknown locations. Respect rate limits in tests.",
+        "priority": "medium",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 15,
+        "title": "Add Comprehensive Error Handling",
+        "description": "Implement error mapping for SkyFi API errors to friendly MCP messages, add logging, and handle edge cases across all tools.",
+        "details": "Create lib/skyfi_mcp/error_handler.ex to map errors: 401 -> 'Invalid API key', 404 -> 'Resource not found', 429 -> 'Rate limit exceeded', 5xx -> 'Service unavailable'. Add Elixir Logger calls at info/error levels for all tool invocations. Implement input validation errors with helpful messages. Add telemetry for monitoring tool usage. Pseudo-code: defmodule SkyfiMcp.ErrorHandler do; def handle_api_error({:error, %Tesla.Env{status: 401}}), do: {:error, 'Invalid SkyFi API key. Please check your credentials.'}; def handle_api_error({:error, %Tesla.Env{status: 429}}), do: {:error, 'Rate limit exceeded. Please try again in a moment.'}; end. Add error wrapping in all tools.",
+        "testStrategy": "Induce errors: invalid API key (401), malformed requests (400), rate limit (429). Verify MCP error responses are user-friendly. Check logs contain request IDs for debugging. Test network failures and timeouts.",
+        "priority": "medium",
+        "dependencies": [
+          5,
+          8,
+          9,
+          10,
+          11,
+          12,
+          14
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 16,
+        "title": "Create MCP Server Initialization and Tool Registry",
+        "description": "Implement server initialization that registers all tools and handles MCP protocol handshake (initialize, tools/list).",
+        "details": "In lib/skyfi_mcp/server.ex, create main server module. Handle MCP initialization handshake: respond to 'initialize' request with server capabilities. Implement 'tools/list' to return all available tools with schemas. Register tools: SearchArchive, CheckFeasibility, GetPriceEstimate, PlaceOrder, ListOrders, SetupMonitor, Geocode. Each tool provides: name, description, inputSchema (JSON Schema). Route 'tools/call' requests to appropriate tool module. Pseudo-code: defmodule SkyfiMcp.Server do; @tools [SearchArchive, CheckFeasibility, ...]; def handle_request('initialize', _), do: {:ok, %{protocolVersion: '2024-11-05', capabilities: %{tools: %{}}}}; def handle_request('tools/list', _), do: {:ok, %{tools: list_tool_schemas()}}; def handle_request('tools/call', %{name: name, arguments: args}), do: call_tool(name, args); end",
+        "testStrategy": "Test MCP handshake sequence: 1) send initialize, verify response, 2) send tools/list, verify all tools listed with schemas, 3) send tools/call for each tool, verify routing works. Use MCP Inspector or Claude Desktop for integration testing.",
+        "priority": "critical",
+        "dependencies": [
+          4,
+          5,
+          8,
+          9,
+          10,
+          11,
+          12,
+          14
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 17,
+        "title": "Database Setup for Monitors",
+        "description": "Set up PostgreSQL database with Ecto, create schema and migrations for storing monitor configurations.",
+        "details": "Add dependencies: ecto_sql, postgrex. Configure Ecto repo in config/. Create migration for monitors table: id, user_api_key_hash, aoi (geometry/jsonb), criteria (jsonb), webhook_url, check_interval, last_checked_at, last_image_id, status (active/paused/failed), inserted_at, updated_at. Create schema module with validations. Pseudo-code: mix ecto.create && mix ecto.gen.migration create_monitors. In migration: create table(:monitors) do; add :aoi, :map; add :webhook_url, :string; add :status, :string; timestamps(); end. Create lib/skyfi_mcp/monitor.ex schema.",
+        "testStrategy": "Run migrations successfully. Create, read, update monitor records via Ecto. Test validations (required fields, valid URLs). Verify indexes for performance (on status, last_checked_at).",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 18,
+        "title": "Configure Development and Production Environments",
+        "description": "Set up environment configuration for dev/test/prod, including API keys, database, and deployment settings.",
+        "details": "In config/, configure: config/dev.exs (local settings, SQLite or local Postgres), config/test.exs (test DB), config/prod.exs (production). Use runtime.exs for runtime env vars. Required env vars: SKYFI_API_KEY (or per-user passthrough), DATABASE_URL, SECRET_KEY_BASE, PHX_HOST. Add .env.example with placeholders. Use Config.Reader for loading. Document all required variables in README.",
+        "testStrategy": "Test each environment: dev runs locally, test uses separate DB and passes all tests, prod config validates (check with mix release). Verify secrets are not committed (check .gitignore includes .env).",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          17
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 19,
+        "title": "Create Dockerfile and Deployment Configuration",
+        "description": "Build production Dockerfile for deploying to Fly.io or Render, with multi-stage build for optimization.",
+        "details": "Create Dockerfile with multi-stage build: 1) Builder stage: FROM hexpm/elixir:1.14.5-erlang-25.3.2-alpine, install deps, compile assets, 2) Runtime stage: FROM alpine, copy release, expose port. Use mix release for production builds. Create fly.toml for Fly.io deployment with: app name, region, services (http on 4000), env vars, health checks. Add deploy script. Example: FROM hexpm/elixir:1.14-alpine AS build; WORKDIR /app; COPY mix.* ./; RUN mix deps.get --only prod; COPY . .; RUN mix release. FROM alpine:3.17; COPY --from=build /app/_build/prod/rel/skyfi_mcp ./; CMD ['./bin/skyfi_mcp', 'start']",
+        "testStrategy": "Build Docker image locally: docker build -t skyfi-mcp .. Run container: docker run -p 4000:4000 skyfi-mcp, verify server starts and responds. Test deployment to Fly.io staging: fly deploy, verify SSE endpoint accessible remotely. Check logs: fly logs.",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          18
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 20,
+        "title": "Write Comprehensive Documentation",
+        "description": "Create detailed README, API documentation, integration guides, and examples for users and developers.",
+        "details": "Expand README.md with: overview, features list, prerequisites, installation (local + Docker), configuration (env vars), usage with Claude Desktop (stdio + SSE), tool reference (all tools with examples), troubleshooting, contributing guidelines. Add docs/ folder: architecture.md (system design), api.md (tool schemas), integration-guide.md (step-by-step for Claude Desktop, other MCP clients), webhook-guide.md (monitoring setup). Add examples/ with sample MCP conversations. Include diagrams (use mermaid) for architecture and flows.",
+        "testStrategy": "Have a developer unfamiliar with the project follow docs to: 1) set up locally, 2) configure Claude Desktop, 3) execute sample workflow (search -> price -> order). Collect feedback and iterate. Verify all links and code examples work.",
+        "priority": "medium",
+        "dependencies": [
+          16,
+          15
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 21,
+        "title": "Build Demo Agent (P1)",
+        "description": "Create a polished reference implementation agent that demonstrates deep research capabilities using SkyFi MCP.",
+        "details": "Create a sample agent (could be Python using MCP SDK or TypeScript) that showcases: 1) Natural language query: 'Find cloud-free images of Amazon rainforest deforestation hotspots from last 6 months', 2) Automatic workflow: geocode -> search -> filter -> get prices -> present options, 3) Monitoring setup: 'Alert me when new imagery is available for this region', 4) Order placement with confirmation. Include Jupyter notebook or CLI script. Add to examples/demo-agent/. Document decision-making process. Use OpenAI/Anthropic API for LLM integration.",
+        "testStrategy": "Run demo end-to-end with real SkyFi sandbox API. Verify agent correctly interprets queries, chains tool calls, handles errors gracefully, and presents results clearly. Record demo video showing conversation flow. Test with non-technical users for UX feedback.",
+        "priority": "low",
+        "dependencies": [
+          16,
+          20
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 22,
+        "title": "Add Monitoring and Telemetry",
+        "description": "Implement application monitoring, metrics collection, and observability for production deployment.",
+        "details": "Add telemetry with :telemetry library. Instrument: tool invocation counts, latency, errors, API call metrics. Add health check endpoint: /health (returns 200 if server + DB are healthy). Integrate with monitoring service (AppSignal, Datadog, or self-hosted Prometheus + Grafana). Log structured JSON with request IDs for tracing. Add error tracking (Sentry/Rollbar). Metrics to track: requests/sec, p95 latency, error rate, active monitors, webhook delivery success rate.",
+        "testStrategy": "Generate load with test requests, verify metrics are collected. Trigger errors, verify they appear in error tracking. Check health endpoint returns correct status during DB outage. View dashboards showing real-time metrics.",
+        "priority": "low",
+        "dependencies": [
+          16,
+          19
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 23,
+        "title": "Security Audit and Hardening",
+        "description": "Perform security review of API key handling, input validation, webhook security, and rate limiting.",
+        "details": "Review: 1) API key handling - never log keys, hash before storing for monitors, 2) Input validation - prevent injection attacks in GeoJSON, dates, URLs, 3) Webhook security - validate URLs, implement signing for webhook payloads (HMAC), timeout webhook requests, 4) Rate limiting - add Plug.RateLimit for API endpoints, 5) CORS configuration for SSE endpoint, 6) Secrets management - use encrypted env vars in production. Run mix deps.audit for vulnerable dependencies. Add security.md with disclosure policy.",
+        "testStrategy": "Penetration testing: attempt SQL injection, XSS in inputs, SSRF via webhook URLs. Verify API keys are not in logs/error traces. Test rate limiting with burst requests. Review code with security checklist. Use sobelow for static analysis: mix sobelow.",
+        "priority": "medium",
+        "dependencies": [
+          16
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-11-18T16:18:40.528Z",
+      "updated": "2025-11-18T18:30:00.000Z",
+      "description": "Revised lean-mean tasks for SkyFi MCP with Elixir/Phoenix, including P0 monitoring, webhooks, and OpenStreetMaps integration"
+    }
+  }
+}
