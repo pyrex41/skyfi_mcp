@@ -19,9 +19,7 @@ defmodule SkyfiMcp.Transports.Stdio do
   Runs indefinitely until the process is killed or stdin closes.
   """
   def start_link(_opts \\ []) do
-    Logger.info("Starting MCP stdio transport...")
-
-    # Start the stdio loop
+    # Start the stdio loop (no logging - interferes with JSON output)
     Task.start_link(fn -> stdio_loop() end)
   end
 
@@ -40,8 +38,6 @@ defmodule SkyfiMcp.Transports.Stdio do
   end
 
   defp process_message(line) do
-    Logger.debug("Received: #{line}")
-
     case JsonRpc.parse(line) do
       {:ok, request} ->
         # Route the request to appropriate handler
@@ -59,7 +55,6 @@ defmodule SkyfiMcp.Transports.Stdio do
 
   defp send_response(response) do
     json = Jason.encode!(response)
-    Logger.debug("Sending: #{json}")
     IO.puts(json)
   end
 end

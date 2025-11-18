@@ -1,0 +1,14 @@
+{
+  "mcp": {
+    "skyfi-sse": {
+      "type": "remote",
+      "url": "http://localhost:4000/mcp/sse",
+      "enabled": true,
+      "headers": {
+        "Authorization": "Bearer sk_mcp_cabec379136b4d3a0b07f275257b1ef4508d494aff7e049680b9c31ae962ccd7",
+        "X-SkyFi-API-Key": "YOUR_SKYFI_API_KEY_HERE"
+      }
+    }
+  },
+  "$schema": "https://opencode.ai/config.json"
+}

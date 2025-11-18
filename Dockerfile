@@ -6,7 +6,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Build
 # -----------------------------------------------------------------------------
-FROM hexpm/elixir:1.16.0-erlang-26.2.1-alpine-3.19.0 AS build
+FROM hexpm/elixir:1.17.3-erlang-27.1.2-alpine-3.20.3 AS build
 
 # Install build dependencies
 RUN apk add --no-cache \
@@ -45,7 +45,7 @@ RUN mix release
 # -----------------------------------------------------------------------------
 # Stage 2: Runtime
 # -----------------------------------------------------------------------------
-FROM alpine:3.19.0 AS app
+FROM alpine:3.20.3 AS app
 
 # Install runtime dependencies
 RUN apk add --no-cache \

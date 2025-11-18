@@ -52,6 +52,12 @@ config :skyfi_mcp, dev_routes: true
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"
 
+# Configure logger to use stderr (important for stdio MCP transport)
+config :logger, :default_handler,
+  config: %{
+    type: :standard_error
+  }
+
 # Set a higher stacktrace during development. Avoid configuring such
 # in production as building large stacktraces may be expensive.
 config :phoenix, :stacktrace_depth, 20

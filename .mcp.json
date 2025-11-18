@@ -14,6 +14,16 @@
 				"AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
 				"OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
 			}
+		},
+		"skyfi": {
+			"type": "stdio",
+			"command": "mix",
+			"args": ["skyfi_mcp.stdio"],
+			"cwd": "/Users/reuben/gauntlet/skyfi_mcp",
+			"env": {
+				"SKYFI_API_KEY": "YOUR_SKYFI_API_KEY_HERE",
+				"MIX_ENV": "dev"
+			}
 		}
 	}
 }
