@@ -1,0 +1,51 @@
+# fly.toml - Configuration for Fly.io deployment
+# Learn more: https://fly.io/docs/reference/configuration/
+
+# App name (will be set during fly launch)
+app = "skyfi-mcp"
+primary_region = "sjc"  # San Jose - change to your preferred region
+kill_signal = "SIGTERM"
+kill_timeout = "5s"
+
+[build]
+
+[env]
+  DATA = "/data"
+  PHX_SERVER = "true"
+  MIX_ENV = "prod"
+  # PHX_HOST will be automatically set by Fly.io
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  # Health check configuration
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 1000
+    soft_limit = 500
+
+# Mount persistent volume for SQLite database
+[mounts]
+  source = "data"
+  destination = "/data"
+
+# VM resources (adjust based on your needs)
+[vm]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512
+
+# Auto-scaling configuration
+[[vm]]
+  memory = '512mb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+# Secrets to set via CLI:
+# fly secrets set SKYFI_API_KEY=your_key_here
+# fly secrets set SECRET_KEY_BASE=$(mix phx.gen.secret)

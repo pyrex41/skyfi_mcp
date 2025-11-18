@@ -17,6 +17,7 @@ defmodule SkyfiMcp.ToolRouter do
   alias SkyfiMcp.Tools.ListOrders
   alias SkyfiMcp.Tools.Geocode
   alias SkyfiMcp.Tools.ReverseGeocode
+  alias SkyfiMcp.Tools.SetupMonitor
 
   @server_name "skyfi-mcp"
   @server_version "0.1.0"
@@ -288,6 +289,68 @@ defmodule SkyfiMcp.ToolRouter do
           },
           required: ["lat", "lon"]
         }
+      },
+      %{
+        name: "setup_monitor",
+        description: "Set up monitoring for an area of interest to receive webhook notifications when new satellite imagery matching your criteria becomes available. Perfect for automated alerting and continuous monitoring.",
+        inputSchema: %{
+          type: "object",
+          properties: %{
+            aoi: %{
+              oneOf: [
+                %{
+                  type: "array",
+                  description: "Bounding box as [min_lon, min_lat, max_lon, max_lat]",
+                  items: %{type: "number"},
+                  minItems: 4,
+                  maxItems: 4
+                },
+                %{
+                  type: "object",
+                  description: "GeoJSON Polygon",
+                  required: ["type", "coordinates"],
+                  properties: %{
+                    type: %{type: "string", enum: ["Polygon", "MultiPolygon"]},
+                    coordinates: %{type: "array"}
+                  }
+                }
+              ]
+            },
+            webhook_url: %{
+              type: "string",
+              description: "HTTPS URL to receive POST notifications when new imagery is found",
+              format: "uri"
+            },
+            cloud_cover_max: %{
+              type: "integer",
+              description: "Maximum cloud cover percentage (0-100)",
+              minimum: 0,
+              maximum: 100,
+              default: 100
+            },
+            sensor_types: %{
+              type: "array",
+              description: "Sensor types to monitor",
+              items: %{type: "string", enum: ["optical", "sar"]},
+              default: ["optical"]
+            },
+            resolution_min: %{
+              type: "number",
+              description: "Minimum resolution in meters (optional)"
+            },
+            check_interval: %{
+              type: "integer",
+              description: "Check interval in seconds (minimum: 3600 = hourly, default: 86400 = daily)",
+              minimum: 3600,
+              default: 86400
+            },
+            api_key: %{
+              type: "string",
+              description: "SkyFi API key for authentication"
+            }
+          },
+          required: ["aoi", "webhook_url"]
+        }
       }
     ]
 
@@ -355,6 +418,10 @@ defmodule SkyfiMcp.ToolRouter do
 
   defp execute_tool("reverse_geocode", arguments) do
     ReverseGeocode.execute(arguments)
+  end
+
+  defp execute_tool("setup_monitor", arguments) do
+    SetupMonitor.execute(arguments)
   end
 
   defp execute_tool(unknown_tool, _arguments) do
