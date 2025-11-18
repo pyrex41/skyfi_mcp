@@ -15,6 +15,8 @@ defmodule SkyfiMcp.ToolRouter do
   alias SkyfiMcp.Tools.GetPriceEstimate
   alias SkyfiMcp.Tools.PlaceOrder
   alias SkyfiMcp.Tools.ListOrders
+  alias SkyfiMcp.Tools.Geocode
+  alias SkyfiMcp.Tools.ReverseGeocode
 
   @server_name "skyfi-mcp"
   @server_version "0.1.0"
@@ -225,6 +227,67 @@ defmodule SkyfiMcp.ToolRouter do
             }
           }
         }
+      },
+      %{
+        name: "geocode",
+        description: "Convert a location name or address into geographic coordinates (latitude, longitude). Useful for finding satellite imagery of natural language locations like 'San Francisco' or 'Eiffel Tower, Paris'.",
+        inputSchema: %{
+          type: "object",
+          properties: %{
+            query: %{
+              type: "string",
+              description: "Location name or address to geocode (e.g., 'San Francisco, CA', 'Paris, France')"
+            },
+            limit: %{
+              type: "integer",
+              description: "Maximum number of results to return (1-50)",
+              minimum: 1,
+              maximum: 50,
+              default: 5
+            },
+            country_codes: %{
+              type: "string",
+              description: "Comma-separated ISO 3166-1alpha2 country codes to limit results (e.g., 'us,ca,gb')"
+            },
+            viewbox: %{
+              type: "array",
+              description: "Prefer results within bounding box [min_lon, min_lat, max_lon, max_lat]",
+              items: %{type: "number"},
+              minItems: 4,
+              maxItems: 4
+            }
+          },
+          required: ["query"]
+        }
+      },
+      %{
+        name: "reverse_geocode",
+        description: "Convert geographic coordinates (latitude, longitude) into a human-readable location name and address. Useful for identifying what location satellite imagery coordinates represent.",
+        inputSchema: %{
+          type: "object",
+          properties: %{
+            lat: %{
+              type: "number",
+              description: "Latitude (-90 to 90)",
+              minimum: -90,
+              maximum: 90
+            },
+            lon: %{
+              type: "number",
+              description: "Longitude (-180 to 180)",
+              minimum: -180,
+              maximum: 180
+            },
+            zoom: %{
+              type: "integer",
+              description: "Detail level: 3=country, 5=state, 8=county, 10=city, 14=suburb, 16=streets, 18=building",
+              minimum: 0,
+              maximum: 18,
+              default: 18
+            }
+          },
+          required: ["lat", "lon"]
+        }
       }
     ]
 
@@ -284,6 +347,14 @@ defmodule SkyfiMcp.ToolRouter do
 
   defp execute_tool("list_orders", arguments) do
     ListOrders.execute(arguments)
+  end
+
+  defp execute_tool("geocode", arguments) do
+    Geocode.execute(arguments)
+  end
+
+  defp execute_tool("reverse_geocode", arguments) do
+    ReverseGeocode.execute(arguments)
   end
 
   defp execute_tool(unknown_tool, _arguments) do

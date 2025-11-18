@@ -8,14 +8,22 @@ SkyFi MCP is a standardized interface that enables autonomous AI agents (Claude,
 
 The Model Context Protocol is an open standard that allows AI applications to securely connect to external data sources and tools. Think of it as a universal adapter that lets AI agents interact with services like SkyFi through a consistent, discoverable interface.
 
-## Features (In Development)
+## Features
+
+### ✅ Available Now
 
 - **Search Archive**: Find existing satellite imagery by location, date, and cloud cover
 - **Check Feasibility**: Determine if new imagery can be captured for a specific area
 - **Price Estimates**: Get cost breakdowns for archive downloads or tasking orders
 - **Place Orders**: Purchase imagery with built-in safety confirmations
+- **List Orders**: View and filter your order history with pagination support
+- **Geocoding**: Convert location names to coordinates (e.g., "San Francisco" → lat/lon)
+- **Reverse Geocoding**: Convert coordinates to location names (e.g., lat/lon → "San Francisco, California")
+
+### 🚧 In Development
+
 - **AOI Monitoring**: Set up automated alerts when new imagery becomes available
-- **Natural Language Locations**: Use place names instead of coordinates via OpenStreetMap
+- **Webhook Notifications**: Receive real-time updates about imagery availability
 
 ## Prerequisites
 
@@ -177,7 +185,8 @@ test/                           # Test suite
 - [x] `get_price_estimate` tool
 - [x] `place_order` tool with safety
 - [x] `list_orders` tool
-- [ ] OpenStreetMap geocoding integration
+- [x] `geocode` tool (OpenStreetMap integration)
+- [x] `reverse_geocode` tool (OpenStreetMap integration)
 
 ### 📅 Phase 3: Monitoring & Webhooks (Week 2)
 - [ ] AOI monitoring setup
