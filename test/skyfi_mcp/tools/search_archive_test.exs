@@ -16,7 +16,7 @@ defmodule SkyfiMcp.Tools.SearchArchiveTest do
   end
 
   test "executes search successfully with valid params" do
-    mock(fn %{method: :get, url: "https://api.skyfi.com/archives"} ->
+    mock(fn %{method: :get, url: "https://app.skyfi.com/platform-api/archives"} ->
       json(%{
         "data" => [
           %{
