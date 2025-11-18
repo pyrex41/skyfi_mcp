@@ -18,8 +18,26 @@ defmodule SkyfiMcp.McpProtocol.JsonRpc do
   end
 
   defmodule Response do
-    @derive Jason.Encoder
     defstruct [:jsonrpc, :result, :error, :id]
+
+    defimpl Jason.Encoder, for: __MODULE__ do
+      def encode(response, opts) do
+        # JSON-RPC 2.0: response MUST have either result or error, not both
+        map = %{
+          jsonrpc: response.jsonrpc,
+          id: response.id
+        }
+
+        map =
+          cond do
+            response.result != nil -> Map.put(map, :result, response.result)
+            response.error != nil -> Map.put(map, :error, response.error)
+            true -> map
+          end
+
+        Jason.Encode.map(map, opts)
+      end
+    end
   end
 
   defmodule Error do
