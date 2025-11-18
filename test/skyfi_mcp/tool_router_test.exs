@@ -10,7 +10,7 @@ defmodule SkyfiMcp.ToolRouterTest do
     Application.put_env(:skyfi_mcp, :skyfi_api_key, "test_api_key")
 
     mock(fn
-      %{method: :get, url: "https://api.skyfi.com/archives"} ->
+      %{method: :get, url: "https://app.skyfi.com/platform-api/archives"} ->
         json(%{
           "data" => [
             %{

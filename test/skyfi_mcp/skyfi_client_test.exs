@@ -17,7 +17,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
 
   describe "search_archive/2" do
     test "makes correct GET request to /archives" do
-      mock(fn %{method: :get, url: "https://api.skyfi.com/archives"} ->
+      mock(fn %{method: :get, url: "https://app.skyfi.com/platform-api/archives"} ->
         json(%{data: [%{id: "img_123", cloud_cover: 5.2}]}, status: 200)
       end)
 
@@ -26,7 +26,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
     end
 
     test "returns error for 401 unauthorized" do
-      mock(fn %{method: :get, url: "https://api.skyfi.com/archives"} ->
+      mock(fn %{method: :get, url: "https://app.skyfi.com/platform-api/archives"} ->
         json(%{error: "Invalid API key"}, status: 401)
       end)
 
@@ -34,7 +34,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
     end
 
     test "returns error for 404 not found" do
-      mock(fn %{method: :get, url: "https://api.skyfi.com/archives"} ->
+      mock(fn %{method: :get, url: "https://app.skyfi.com/platform-api/archives"} ->
         json(%{error: "Not found"}, status: 404)
       end)
 
@@ -42,7 +42,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
     end
 
     test "returns error for 429 rate limit" do
-      mock(fn %{method: :get, url: "https://api.skyfi.com/archives"} ->
+      mock(fn %{method: :get, url: "https://app.skyfi.com/platform-api/archives"} ->
         json(%{error: "Too many requests"}, status: 429)
       end)
 
@@ -50,7 +50,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
     end
 
     test "returns error for 500 server error" do
-      mock(fn %{method: :get, url: "https://api.skyfi.com/archives"} ->
+      mock(fn %{method: :get, url: "https://app.skyfi.com/platform-api/archives"} ->
         json(%{error: "Internal server error"}, status: 500)
       end)
 
@@ -58,7 +58,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
     end
 
     test "returns error for 400 bad request with message parsing" do
-      mock(fn %{method: :get, url: "https://api.skyfi.com/archives"} ->
+      mock(fn %{method: :get, url: "https://app.skyfi.com/platform-api/archives"} ->
         json(%{error: "Invalid bbox format"}, status: 400)
       end)
 
@@ -67,7 +67,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
     end
 
     test "handles network timeout" do
-      mock(fn %{method: :get, url: "https://api.skyfi.com/archives"} ->
+      mock(fn %{method: :get, url: "https://app.skyfi.com/platform-api/archives"} ->
         {:error, :timeout}
       end)
 
@@ -75,7 +75,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
     end
 
     test "handles connection refused" do
-      mock(fn %{method: :get, url: "https://api.skyfi.com/archives"} ->
+      mock(fn %{method: :get, url: "https://app.skyfi.com/platform-api/archives"} ->
         {:error, :econnrefused}
       end)
 
@@ -85,7 +85,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
 
   describe "check_feasibility/2" do
     test "makes correct POST request to /feasibility" do
-      mock(fn %{method: :post, url: "https://api.skyfi.com/feasibility"} ->
+      mock(fn %{method: :post, url: "https://app.skyfi.com/platform-api/feasibility"} ->
         json(%{probability: 0.85, pass_times: ["2024-02-01T10:00:00Z"]}, status: 200)
       end)
 
@@ -94,7 +94,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
     end
 
     test "returns error for invalid request" do
-      mock(fn %{method: :post, url: "https://api.skyfi.com/feasibility"} ->
+      mock(fn %{method: :post, url: "https://app.skyfi.com/platform-api/feasibility"} ->
         json(%{message: "Invalid AOI geometry"}, status: 400)
       end)
 
@@ -105,7 +105,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
 
   describe "get_price_estimate/2" do
     test "makes correct POST request to /pricing" do
-      mock(fn %{method: :post, url: "https://api.skyfi.com/pricing"} ->
+      mock(fn %{method: :post, url: "https://app.skyfi.com/platform-api/pricing"} ->
         json(%{total: 250.0, currency: "USD", breakdown: %{base: 200, area: 50}}, status: 200)
       end)
 
@@ -114,7 +114,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
     end
 
     test "handles server errors" do
-      mock(fn %{method: :post, url: "https://api.skyfi.com/pricing"} ->
+      mock(fn %{method: :post, url: "https://app.skyfi.com/platform-api/pricing"} ->
         json(%{error: "Pricing service unavailable"}, status: 503)
       end)
 
@@ -125,7 +125,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
 
   describe "place_order/2" do
     test "uses /order-archive endpoint for archive orders" do
-      mock(fn %{method: :post, url: "https://api.skyfi.com/order-archive"} ->
+      mock(fn %{method: :post, url: "https://app.skyfi.com/platform-api/order-archive"} ->
         json(%{id: "ord_456", status: "pending", archive_id: "img_123"}, status: 201)
       end)
 
@@ -134,7 +134,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
     end
 
     test "uses /order-tasking endpoint for tasking orders" do
-      mock(fn %{method: :post, url: "https://api.skyfi.com/order-tasking"} ->
+      mock(fn %{method: :post, url: "https://app.skyfi.com/platform-api/order-tasking"} ->
         json(%{id: "ord_789", status: "pending"}, status: 201)
       end)
 
@@ -143,7 +143,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
     end
 
     test "accepts both 200 and 201 status codes" do
-      mock(fn %{method: :post, url: "https://api.skyfi.com/order-archive"} ->
+      mock(fn %{method: :post, url: "https://app.skyfi.com/platform-api/order-archive"} ->
         json(%{id: "ord_999"}, status: 200)
       end)
 
@@ -152,7 +152,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
     end
 
     test "returns error for 403 access denied" do
-      mock(fn %{method: :post, url: "https://api.skyfi.com/order-archive"} ->
+      mock(fn %{method: :post, url: "https://app.skyfi.com/platform-api/order-archive"} ->
         json(%{error: "Insufficient credits"}, status: 403)
       end)
 
@@ -162,7 +162,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
 
   describe "list_orders/2" do
     test "makes correct GET request to /orders" do
-      mock(fn %{method: :get, url: "https://api.skyfi.com/orders"} ->
+      mock(fn %{method: :get, url: "https://app.skyfi.com/platform-api/orders"} ->
         json(
           %{
             orders: [
@@ -179,7 +179,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
     end
 
     test "includes query parameters" do
-      mock(fn %{method: :get, url: "https://api.skyfi.com/orders"} = env ->
+      mock(fn %{method: :get, url: "https://app.skyfi.com/platform-api/orders"} = env ->
         assert env.query == %{status: "pending", limit: 5}
         json(%{orders: []}, status: 200)
       end)
@@ -189,7 +189,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
     end
 
     test "works with no parameters" do
-      mock(fn %{method: :get, url: "https://api.skyfi.com/orders"} = env ->
+      mock(fn %{method: :get, url: "https://app.skyfi.com/platform-api/orders"} = env ->
         assert env.query == %{}
         json(%{orders: []}, status: 200)
       end)
@@ -200,7 +200,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
 
   describe "get_order/2" do
     test "makes correct GET request to /orders/:id" do
-      mock(fn %{method: :get, url: "https://api.skyfi.com/orders/ord_123"} ->
+      mock(fn %{method: :get, url: "https://app.skyfi.com/platform-api/orders/ord_123"} ->
         json(%{id: "ord_123", status: "completed", price: 250.0}, status: 200)
       end)
 
@@ -209,7 +209,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
     end
 
     test "returns 404 for non-existent order" do
-      mock(fn %{method: :get, url: "https://api.skyfi.com/orders/ord_999"} ->
+      mock(fn %{method: :get, url: "https://app.skyfi.com/platform-api/orders/ord_999"} ->
         json(%{error: "Order not found"}, status: 404)
       end)
 
@@ -242,7 +242,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
 
   describe "error message parsing" do
     test "parses error field from response" do
-      mock(fn %{method: :get, url: "https://api.skyfi.com/archives"} ->
+      mock(fn %{method: :get, url: "https://app.skyfi.com/platform-api/archives"} ->
         json(%{error: "Custom error message"}, status: 400)
       end)
 
@@ -251,7 +251,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
     end
 
     test "parses message field from response" do
-      mock(fn %{method: :get, url: "https://api.skyfi.com/archives"} ->
+      mock(fn %{method: :get, url: "https://app.skyfi.com/platform-api/archives"} ->
         json(%{message: "Another error format"}, status: 400)
       end)
 
@@ -259,7 +259,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
     end
 
     test "parses errors array from response" do
-      mock(fn %{method: :get, url: "https://api.skyfi.com/archives"} ->
+      mock(fn %{method: :get, url: "https://app.skyfi.com/platform-api/archives"} ->
         json(%{errors: ["Error 1", "Error 2", "Error 3"]}, status: 400)
       end)
 
@@ -268,7 +268,7 @@ defmodule SkyfiMcp.SkyfiClientTest do
     end
 
     test "falls back to inspect for unknown format" do
-      mock(fn %{method: :get, url: "https://api.skyfi.com/archives"} ->
+      mock(fn %{method: :get, url: "https://app.skyfi.com/platform-api/archives"} ->
         json(%{unknown_field: "something"}, status: 400)
       end)
 

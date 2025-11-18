@@ -42,7 +42,7 @@ defmodule SkyfiMcp.SkyfiClient do
   require Logger
 
   # Base URL for SkyFi API
-  @base_url "https://api.skyfi.com"
+  @base_url "https://app.skyfi.com/platform-api"
   @default_timeout 30_000  # 30 seconds
 
   @doc """
