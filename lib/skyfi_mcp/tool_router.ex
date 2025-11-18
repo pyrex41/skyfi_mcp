@@ -37,7 +37,8 @@ defmodule SkyfiMcp.ToolRouter do
     result = %{
       protocolVersion: "2024-11-05",
       capabilities: %{
-        tools: %{}
+        tools: %{},
+        prompts: %{}
       },
       serverInfo: %{
         name: @server_name,
@@ -387,6 +388,84 @@ defmodule SkyfiMcp.ToolRouter do
     end
   end
 
+  def handle_request(%JsonRpc.Request{method: "prompts/list", id: id}, _opts) do
+    McpLogger.info("MCP: Listing prompts")
+
+    prompts = [
+      %{
+        name: "search_imagery",
+        description: "Search for satellite imagery of a location",
+        arguments: [
+          %{
+            name: "location",
+            description: "Location name (e.g., 'San Francisco, CA')",
+            required: true
+          },
+          %{
+            name: "days_back",
+            description: "Number of days to search back (default: 30)",
+            required: false
+          }
+        ]
+      },
+      %{
+        name: "price_check",
+        description: "Get pricing estimate for satellite imagery",
+        arguments: [
+          %{
+            name: "location",
+            description: "Location name or coordinates",
+            required: true
+          },
+          %{
+            name: "type",
+            description: "Order type: 'archive' or 'tasking' (default: archive)",
+            required: false
+          }
+        ]
+      },
+      %{
+        name: "monitor_area",
+        description: "Set up monitoring for new satellite imagery in an area",
+        arguments: [
+          %{
+            name: "location",
+            description: "Location name to monitor",
+            required: true
+          },
+          %{
+            name: "webhook_url",
+            description: "URL to receive notifications",
+            required: true
+          }
+        ]
+      }
+    ]
+
+    result = %{prompts: prompts}
+    JsonRpc.success_response(id, result)
+  end
+
+  def handle_request(%JsonRpc.Request{method: "prompts/get", params: params, id: id}, _opts) do
+    prompt_name = Map.get(params, "name")
+    arguments = Map.get(params, "arguments", %{})
+
+    McpLogger.info("MCP: Getting prompt #{prompt_name}")
+
+    case get_prompt(prompt_name, arguments) do
+      {:ok, messages} ->
+        result = %{
+          description: "SkyFi satellite imagery prompt",
+          messages: messages
+        }
+        JsonRpc.success_response(id, result)
+
+      {:error, reason} ->
+        McpLogger.error("Prompt generation failed: #{inspect(reason)}")
+        JsonRpc.error_response(id, -32000, "Prompt generation failed: #{inspect(reason)}")
+    end
+  end
+
   def handle_request(%JsonRpc.Request{method: _method, id: nil}, _opts) do
     # Notification (no response expected)
     McpLogger.debug("MCP: Received notification, no response needed")
@@ -396,6 +475,82 @@ defmodule SkyfiMcp.ToolRouter do
   def handle_request(%JsonRpc.Request{method: method, id: id}, _opts) do
     McpLogger.warning("MCP: Unknown method: #{method}")
     JsonRpc.method_not_found(id)
+  end
+
+  defp get_prompt("search_imagery", arguments) do
+    location = Map.get(arguments, "location")
+    days_back = case Map.get(arguments, "days_back") do
+      nil -> 30
+      val when is_integer(val) -> val
+      val when is_binary(val) ->
+        case Integer.parse(val) do
+          {num, _} -> num
+          :error -> 30
+        end
+      _ -> 30
+    end
+
+    if location do
+      end_date = DateTime.utc_now() |> DateTime.to_iso8601()
+      start_date = DateTime.utc_now()
+        |> DateTime.add(-days_back * 24 * 3600, :second)
+        |> DateTime.to_iso8601()
+
+      {:ok, [
+        %{
+          role: "user",
+          content: %{
+            type: "text",
+            text: "Search for satellite imagery of #{location} from #{start_date} to #{end_date}. First geocode the location to get coordinates, then search the archive."
+          }
+        }
+      ]}
+    else
+      {:error, "location argument is required"}
+    end
+  end
+
+  defp get_prompt("price_check", arguments) do
+    location = Map.get(arguments, "location")
+    order_type = Map.get(arguments, "type", "archive")
+
+    if location do
+      {:ok, [
+        %{
+          role: "user",
+          content: %{
+            type: "text",
+            text: "Get a price estimate for #{order_type} satellite imagery of #{location}. If this is a location name, geocode it first to get coordinates."
+          }
+        }
+      ]}
+    else
+      {:error, "location argument is required"}
+    end
+  end
+
+  defp get_prompt("monitor_area", arguments) do
+    location = Map.get(arguments, "location")
+    webhook_url = Map.get(arguments, "webhook_url")
+
+    cond do
+      !location -> {:error, "location argument is required"}
+      !webhook_url -> {:error, "webhook_url argument is required"}
+      true ->
+        {:ok, [
+          %{
+            role: "user",
+            content: %{
+              type: "text",
+              text: "Set up monitoring for new satellite imagery of #{location}. Send notifications to #{webhook_url}. First geocode the location to get coordinates, then set up the monitor."
+            }
+          }
+        ]}
+    end
+  end
+
+  defp get_prompt(unknown_prompt, _arguments) do
+    {:error, "Unknown prompt: #{unknown_prompt}"}
   end
 
   defp execute_tool("search_archive", arguments, opts) do
