@@ -12,6 +12,10 @@ defmodule SkyfiMcpWeb.McpControllerTest do
 
   test "POST /mcp/message accepts messages", %{conn: conn} do
     conn = post(conn, ~p"/mcp/message", %{jsonrpc: "2.0", method: "test"})
-    assert json_response(conn, 200) == %{"status" => "received"}
+    response = json_response(conn, 200)
+
+    assert response["jsonrpc"] == "2.0"
+    assert response["result"]["status"] == "received"
+    assert response["result"]["method"] == "test"
   end
 end

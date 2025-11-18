@@ -5,10 +5,13 @@ defmodule SkyfiMcp.Tools.SearchArchiveTest do
   alias SkyfiMcp.Tools.SearchArchive
 
   setup do
+    # Configure API key for tests
+    Application.put_env(:skyfi_mcp, :skyfi_api_key, "test_api_key")
+
     mock(fn
-      %{method: :post, url: "https://api.skyfi.com/archive/search"} ->
+      %{method: :get, url: "https://api.skyfi.com/archives"} ->
         json(%{
-          data: [
+          "data" => [
             %{
               "id" => "img_1",
               "capture_date" => "2023-01-01T12:00:00Z",
@@ -20,6 +23,10 @@ defmodule SkyfiMcp.Tools.SearchArchiveTest do
             }
           ]
         })
+    end)
+
+    on_exit(fn ->
+      Application.delete_env(:skyfi_mcp, :skyfi_api_key)
     end)
 
     :ok

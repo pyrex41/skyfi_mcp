@@ -164,19 +164,19 @@ test/                           # Test suite
 
 ## Development Roadmap
 
-### ✅ Phase 1: Foundation (Current)
+### ✅ Phase 1: Foundation (Complete)
 - [x] Phoenix project setup
 - [x] Basic README and documentation
-- [ ] SkyFi API client module
-- [ ] MCP JSON-RPC handler
-- [ ] stdio transport for local development
+- [x] SkyFi API client module
+- [x] MCP JSON-RPC handler
+- [x] stdio transport for local development
 
-### 🚧 Phase 2: Core Tools (Week 1-2)
-- [ ] `search_archive` tool
-- [ ] `check_feasibility` tool
-- [ ] `get_price_estimate` tool
-- [ ] `place_order` tool with safety
-- [ ] `list_orders` tool
+### ✅ Phase 2: Core Tools (Complete)
+- [x] `search_archive` tool
+- [x] `check_feasibility` tool
+- [x] `get_price_estimate` tool
+- [x] `place_order` tool with safety
+- [x] `list_orders` tool
 - [ ] OpenStreetMap geocoding integration
 
 ### 📅 Phase 3: Monitoring & Webhooks (Week 2)
@@ -211,7 +211,7 @@ Once the server is running with stdio transport, you can connect it to Claude De
      "mcpServers": {
        "skyfi": {
          "command": "mix",
-         "args": ["run", "--no-halt", "-e", "SkyfiMcp.Transports.Stdio.start_link()"],
+         "args": ["skyfi_mcp.stdio"],
          "cwd": "/absolute/path/to/skyfi_mcp",
          "env": {
            "SKYFI_API_KEY": "your_api_key_here"
@@ -223,7 +223,11 @@ Once the server is running with stdio transport, you can connect it to Claude De
 
 3. Restart Claude Desktop
 
-_(Note: stdio transport is not yet implemented - this is coming in Task #7)_
+You can also test the stdio transport manually:
+```bash
+# Send a test message
+echo '{"jsonrpc":"2.0","method":"tools/list","params":{},"id":1}' | mix skyfi_mcp.stdio
+```
 
 ## API Documentation
 

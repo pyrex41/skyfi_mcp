@@ -37,6 +37,13 @@ defmodule SkyfiMcp.McpProtocol.JsonRpc do
     end
   end
 
+  @doc """
+  Parses an already-decoded map (from Phoenix params) into a Request struct or returns an error.
+  """
+  def parse_map(params) when is_map(params) do
+    validate_request(params)
+  end
+
   defp validate_request(%{"jsonrpc" => @jsonrpc_version, "method" => method, "id" => id} = params)
        when is_binary(method) do
     {:ok,

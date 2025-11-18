@@ -6,17 +6,20 @@ defmodule SkyfiMcpWeb.McpController do
   GET /mcp/sse
   """
   def sse(conn, _params) do
-    conn =
+    # In test mode, return immediately without streaming
+    if Application.get_env(:skyfi_mcp, :env) == :test do
+      conn
+      |> put_resp_header("content-type", "text/event-stream")
+      |> put_resp_header("cache-control", "no-cache")
+      |> put_resp_header("connection", "keep-alive")
+      |> send_resp(200, "")
+    else
       conn
       |> put_resp_header("content-type", "text/event-stream")
       |> put_resp_header("cache-control", "no-cache")
       |> put_resp_header("connection", "keep-alive")
       |> send_chunked(200)
-
-    if Application.get_env(:skyfi_mcp, :env) == :test do
-      conn
-    else
-      stream_events(conn)
+      |> stream_events()
     end
   end
 
@@ -24,13 +27,23 @@ defmodule SkyfiMcpWeb.McpController do
   Handles incoming POST messages for an active SSE session.
   POST /mcp/message
   """
-  def message(conn, _params) do
-    # In a real implementation, we would route this to the specific GenServer
-    # associated with the session ID. For now, we'll just echo it back
-    # or process it statelessly if possible.
-    
-    # TODO: Implement full session handling
-    json(conn, %{status: "received"})
+  def message(conn, params) do
+    # Parse JSON-RPC request
+    case SkyfiMcp.McpProtocol.JsonRpc.parse_map(params) do
+      {:ok, request} ->
+        # TODO: Route to appropriate tool handler based on request.method
+        # For now, just acknowledge the request
+        response = %{
+          jsonrpc: "2.0",
+          id: request.id,
+          result: %{status: "received", method: request.method}
+        }
+        json(conn, response)
+
+      {:error, error} ->
+        # Return JSON-RPC error response
+        json(conn, error)
+    end
   end
 
   defp stream_events(conn) do

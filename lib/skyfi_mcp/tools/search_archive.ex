@@ -16,8 +16,8 @@ defmodule SkyfiMcp.Tools.SearchArchive do
   """
   def execute(params) do
     with {:ok, validated_params} <- validate_params(params),
-         {:ok, response} <- SkyfiClient.search_archive(validated_params) do
-      format_response(response)
+         {:ok, body} <- SkyfiClient.search_archive(validated_params) do
+      format_response(body)
     else
       {:error, reason} -> {:error, reason}
     end
@@ -37,7 +37,7 @@ defmodule SkyfiMcp.Tools.SearchArchive do
     end
   end
 
-  defp format_response(%Tesla.Env{status: 200, body: body}) do
+  defp format_response(body) when is_map(body) do
     # SkyFi API response structure (assumed based on task description)
     # We need to transform it into a list of clean image objects
     images = Map.get(body, "data", []) || []
@@ -55,9 +55,5 @@ defmodule SkyfiMcp.Tools.SearchArchive do
     end)
 
     {:ok, formatted_images}
-  end
-
-  defp format_response(%Tesla.Env{status: status}) do
-    {:error, "SkyFi API error: #{status}"}
   end
 end
