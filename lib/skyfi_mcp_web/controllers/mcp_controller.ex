@@ -6,18 +6,16 @@ defmodule SkyfiMcpWeb.McpController do
   GET /mcp/sse
   """
   def sse(conn, _params) do
+    conn = conn
+      |> put_resp_header("content-type", "text/event-stream")
+      |> put_resp_header("cache-control", "no-cache")
+      |> put_resp_header("connection", "keep-alive")
+
     # In test mode, return immediately without streaming
     if Application.get_env(:skyfi_mcp, :env) == :test do
-      conn
-      |> put_resp_header("content-type", "text/event-stream")
-      |> put_resp_header("cache-control", "no-cache")
-      |> put_resp_header("connection", "keep-alive")
-      |> send_resp(200, "")
+      send_resp(conn, 200, "")
     else
       conn
-      |> put_resp_header("content-type", "text/event-stream")
-      |> put_resp_header("cache-control", "no-cache")
-      |> put_resp_header("connection", "keep-alive")
       |> send_chunked(200)
       |> stream_events()
     end

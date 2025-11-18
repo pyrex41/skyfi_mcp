@@ -2,11 +2,8 @@ import Config
 
 # Configure your database
 config :skyfi_mcp, SkyfiMcp.Repo,
-  username: "postgres",
-  password: "postgres",
-  hostname: "localhost",
-  database: "skyfi_mcp_dev",
-  stacktrace: true,
+  adapter: Ecto.Adapters.SQLite3,
+  database: System.get_env("DATA", ".") <> "/skyfi_mcp_dev.db",
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
 

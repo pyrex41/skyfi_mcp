@@ -1,0 +1,11 @@
+# SkyFi MCP Demo Agent - Python Dependencies
+
+# HTTP requests
+requests>=2.31.0
+
+# Optional: For nicer output formatting
+colorama>=0.4.6
+
+# Optional: For Jupyter notebook support
+# jupyter>=1.0.0
+# ipython>=8.12.0

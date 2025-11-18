@@ -30,3 +30,8 @@ skyfi_mcp-*.tar
 .env.local
 .env.*.local
 
+# SQLite databases
+*.db
+*.db-shm
+*.db-wal
+

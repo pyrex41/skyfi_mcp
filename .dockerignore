@@ -1,0 +1,48 @@
+# Git
+.git
+.gitignore
+
+# Build artifacts
+_build
+deps
+*.ez
+
+# SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+# Environment files
+.env
+.env.*
+
+# Test files
+test
+
+# Documentation
+log_docs
+.taskmaster
+*.md
+!README.md
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+erl_crash.dump
+
+# Node (if any)
+node_modules
+npm-debug.log
+
+# Temporary files
+tmp
+temp

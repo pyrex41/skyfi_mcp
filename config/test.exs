@@ -6,12 +6,10 @@ import Config
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
 config :skyfi_mcp, SkyfiMcp.Repo,
-  username: "postgres",
-  password: "postgres",
-  hostname: "localhost",
-  database: "skyfi_mcp_test#{System.get_env("MIX_TEST_PARTITION")}",
+  adapter: Ecto.Adapters.SQLite3,
+  database: "skyfi_mcp_test.db",
   pool: Ecto.Adapters.SQL.Sandbox,
-  pool_size: System.schedulers_online() * 2
+  pool_size: 1
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.
