@@ -22,15 +22,22 @@ defmodule SkyfiMcp.Tools.SetupMonitor do
     - `sensor_types` - Array of sensor types to monitor (default: ["optical"])
     - `resolution_min` - Minimum resolution in meters (optional)
     - `check_interval` - Check interval in seconds (default: 86400 = daily, minimum: 3600 = hourly)
-    - `api_key` - SkyFi API key for authentication (required)
+
+  ## Options
+
+    - `skyfi_api_key`: SkyFi API key to use for this request (overrides config)
 
   ## Returns
 
     - `{:ok, result}` - Monitor created successfully
     - `{:error, reason}` - Validation or creation failed
   """
-  def execute(params) do
-    with {:ok, validated_params} <- validate_params(params),
+  def execute(params, opts \\ []) do
+    # Inject the API key from opts into params
+    api_key = Keyword.get(opts, :skyfi_api_key)
+    params_with_key = if api_key, do: Map.put(params, "api_key", api_key), else: params
+
+    with {:ok, validated_params} <- validate_params(params_with_key),
          {:ok, normalized_params} <- normalize_params(validated_params),
          {:ok, monitor} <- Monitoring.create_monitor(normalized_params) do
       format_response(monitor)

@@ -231,6 +231,95 @@ You can also test the stdio transport manually:
 echo '{"jsonrpc":"2.0","method":"tools/list","params":{},"id":1}' | mix skyfi_mcp.stdio
 ```
 
+## Connecting to Deployed Instance (Cloud)
+
+If you're connecting to a shared SkyFi MCP deployment (e.g., hosted on Fly.io), you'll need **two credentials**:
+
+1. **Access Key** - Authorization to use the MCP server (provided by server admin)
+2. **SkyFi API Key** - Your personal SkyFi API key for imagery requests
+
+This dual-credential system ensures:
+- ✅ Server admin controls who can access the deployment
+- ✅ Each user provides their own SkyFi API key
+- ✅ API costs are billed to the correct SkyFi account
+- ✅ Complete isolation of user data and imagery requests
+
+### Getting Your Credentials
+
+1. **Access Key**: Request from your server administrator
+   ```bash
+   # Admin generates a key for you
+   mix skyfi.access.create your.email@example.com "Your Name"
+   # You'll receive: sk_mcp_abc123...
+   ```
+
+2. **SkyFi API Key**: Get your own from [skyfi.com/settings/api](https://www.skyfi.com/settings/api)
+
+### Configuration
+
+Edit Claude Desktop's MCP settings file:
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+Add the SkyFi MCP server with **both credentials**:
+
+```json
+{
+  "mcpServers": {
+    "skyfi": {
+      "transport": {
+        "type": "sse",
+        "url": "https://your-deployment.fly.dev/mcp/sse",
+        "headers": {
+          "Authorization": "Bearer sk_mcp_your_access_key",
+          "X-SkyFi-API-Key": "your_personal_skyfi_api_key"
+        }
+      }
+    }
+  }
+}
+```
+
+**Replace:**
+- `your-deployment.fly.dev` - Actual deployed server URL
+- `sk_mcp_your_access_key` - Access key from admin
+- `your_personal_skyfi_api_key` - Your SkyFi API key
+
+**Important Notes:**
+- The access key (`Authorization` header) validates you can use the MCP server
+- Your SkyFi API key (`X-SkyFi-API-Key` header) is used for all imagery requests
+- All costs are billed to YOUR SkyFi account
+- Your API key is never stored on the server
+
+### Admin: Managing Access Keys
+
+If you're running the server, use these commands to manage user access:
+
+```bash
+# Create a new access key
+mix skyfi.access.create user@example.com "Description"
+
+# List all access keys
+mix skyfi.access.list
+
+# Show detailed stats for a key
+mix skyfi.access.stats sk_mcp_abc123...
+
+# Revoke an access key
+mix skyfi.access.revoke sk_mcp_abc123...
+```
+
+Access keys track:
+- Request count per user
+- Tool usage breakdown
+- Last activity timestamp
+- Success/error rates
+
+View server health:
+```bash
+curl https://your-deployment.fly.dev/health
+```
+
 ## API Documentation
 
 ### SkyFi Public API

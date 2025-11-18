@@ -13,10 +13,15 @@ defmodule SkyfiMcp.Tools.SearchArchive do
   - `start_date`: ISO8601 string (e.g., "2023-01-01T00:00:00Z")
   - `end_date`: ISO8601 string
   - `cloud_cover_max`: Integer 0-100 (optional, default 100)
+
+  Options:
+  - `skyfi_api_key`: SkyFi API key to use for this request (overrides config)
   """
-  def execute(params) do
+  def execute(params, opts \\ []) do
+    api_key = Keyword.get(opts, :skyfi_api_key)
+
     with {:ok, validated_params} <- validate_params(params),
-         {:ok, body} <- SkyfiClient.search_archive(validated_params) do
+         {:ok, body} <- SkyfiClient.search_archive(api_key, validated_params) do
       format_response(body)
     else
       {:error, reason} -> {:error, reason}
