@@ -21,6 +21,24 @@ defmodule SkyfiMcp.Release do
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, to: version))
   end
 
+  def seed do
+    load_app()
+
+    for repo <- repos() do
+      {:ok, _, _} =
+        Ecto.Migrator.with_repo(repo, fn _repo ->
+          # Run seed script
+          seed_script = Path.join([Application.app_dir(@app, "priv"), "repo", "seeds.exs"])
+
+          if File.exists?(seed_script) do
+            Code.eval_file(seed_script)
+          else
+            IO.puts("No seeds file found at #{seed_script}")
+          end
+        end)
+    end
+  end
+
   defp repos do
     Application.fetch_env!(@app, :ecto_repos)
   end
