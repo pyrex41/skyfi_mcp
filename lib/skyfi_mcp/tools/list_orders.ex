@@ -18,10 +18,15 @@ defmodule SkyfiMcp.Tools.ListOrders do
   - `limit`: Integer - Number of results per page (default: 10, max: 100)
   - `offset`: Integer - Pagination offset (default: 0)
   - `order_type`: String - Filter by order type ("archive" or "tasking")
+
+  Options:
+  - `skyfi_api_key`: SkyFi API key to use for this request (overrides config)
   """
-  def execute(params \\ %{}) do
+  def execute(params \\ %{}, opts \\ []) do
+    api_key = Keyword.get(opts, :skyfi_api_key)
+
     with {:ok, validated_params} <- validate_params(params),
-         {:ok, response} <- SkyfiClient.list_orders(validated_params) do
+         {:ok, response} <- SkyfiClient.list_orders(api_key, validated_params) do
       format_response(response)
     else
       {:error, reason} -> {:error, reason}

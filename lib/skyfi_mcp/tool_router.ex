@@ -24,8 +24,13 @@ defmodule SkyfiMcp.ToolRouter do
 
   @doc """
   Handles an incoming JSON-RPC request and returns a response.
+
+  opts can include:
+  - skyfi_api_key: Override the default SkyFi API key for this request
   """
-  def handle_request(%JsonRpc.Request{method: "initialize", id: id}) do
+  def handle_request(request, opts \\ [])
+
+  def handle_request(%JsonRpc.Request{method: "initialize", id: id}, _opts) do
     Logger.info("MCP: Initializing server")
 
     result = %{
@@ -42,7 +47,7 @@ defmodule SkyfiMcp.ToolRouter do
     JsonRpc.success_response(id, result)
   end
 
-  def handle_request(%JsonRpc.Request{method: "tools/list", id: id}) do
+  def handle_request(%JsonRpc.Request{method: "tools/list", id: id}, _opts) do
     Logger.info("MCP: Listing tools")
 
     tools = [
@@ -358,13 +363,13 @@ defmodule SkyfiMcp.ToolRouter do
     JsonRpc.success_response(id, result)
   end
 
-  def handle_request(%JsonRpc.Request{method: "tools/call", params: params, id: id}) do
+  def handle_request(%JsonRpc.Request{method: "tools/call", params: params, id: id}, opts) do
     tool_name = Map.get(params, "name")
     tool_arguments = Map.get(params, "arguments", %{})
 
     Logger.info("MCP: Calling tool #{tool_name}")
 
-    case execute_tool(tool_name, tool_arguments) do
+    case execute_tool(tool_name, tool_arguments, opts) do
       {:ok, result} ->
         JsonRpc.success_response(id, %{
           content: [
@@ -381,50 +386,52 @@ defmodule SkyfiMcp.ToolRouter do
     end
   end
 
-  def handle_request(%JsonRpc.Request{method: _method, id: nil}) do
+  def handle_request(%JsonRpc.Request{method: _method, id: nil}, _opts) do
     # Notification (no response expected)
     Logger.debug("MCP: Received notification, no response needed")
     nil
   end
 
-  def handle_request(%JsonRpc.Request{method: method, id: id}) do
+  def handle_request(%JsonRpc.Request{method: method, id: id}, _opts) do
     Logger.warning("MCP: Unknown method: #{method}")
     JsonRpc.method_not_found(id)
   end
 
-  defp execute_tool("search_archive", arguments) do
-    SearchArchive.execute(arguments)
+  defp execute_tool("search_archive", arguments, opts) do
+    SearchArchive.execute(arguments, opts)
   end
 
-  defp execute_tool("check_feasibility", arguments) do
-    CheckFeasibility.execute(arguments)
+  defp execute_tool("check_feasibility", arguments, opts) do
+    CheckFeasibility.execute(arguments, opts)
   end
 
-  defp execute_tool("get_price_estimate", arguments) do
-    GetPriceEstimate.execute(arguments)
+  defp execute_tool("get_price_estimate", arguments, opts) do
+    GetPriceEstimate.execute(arguments, opts)
   end
 
-  defp execute_tool("place_order", arguments) do
-    PlaceOrder.execute(arguments)
+  defp execute_tool("place_order", arguments, opts) do
+    PlaceOrder.execute(arguments, opts)
   end
 
-  defp execute_tool("list_orders", arguments) do
-    ListOrders.execute(arguments)
+  defp execute_tool("list_orders", arguments, opts) do
+    ListOrders.execute(arguments, opts)
   end
 
-  defp execute_tool("geocode", arguments) do
+  defp execute_tool("geocode", arguments, _opts) do
+    # Geocode doesn't need SkyFi API key
     Geocode.execute(arguments)
   end
 
-  defp execute_tool("reverse_geocode", arguments) do
+  defp execute_tool("reverse_geocode", arguments, _opts) do
+    # Reverse geocode doesn't need SkyFi API key
     ReverseGeocode.execute(arguments)
   end
 
-  defp execute_tool("setup_monitor", arguments) do
-    SetupMonitor.execute(arguments)
+  defp execute_tool("setup_monitor", arguments, opts) do
+    SetupMonitor.execute(arguments, opts)
   end
 
-  defp execute_tool(unknown_tool, _arguments) do
+  defp execute_tool(unknown_tool, _arguments, _opts) do
     {:error, "Unknown tool: #{unknown_tool}"}
   end
 end

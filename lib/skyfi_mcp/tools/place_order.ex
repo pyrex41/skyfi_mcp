@@ -34,14 +34,18 @@ defmodule SkyfiMcp.Tools.PlaceOrder do
   High-value order params (when total > $500):
   - `human_approval`: Boolean - Must be true for orders > $500
   - `estimated_cost`: Float - Expected cost (for validation)
+
+  Options:
+  - `skyfi_api_key`: SkyFi API key to use for this request (overrides config)
   """
-  def execute(params) do
+  def execute(params, opts \\ []) do
+    api_key = Keyword.get(opts, :skyfi_api_key)
     Logger.info("Place order attempt", params: sanitize_params(params))
 
     with {:ok, validated_params} <- validate_params(params),
          {:ok, _} <- check_price_confirmation(validated_params),
          {:ok, _} <- check_high_value_approval(validated_params),
-         {:ok, response} <- SkyfiClient.place_order(validated_params) do
+         {:ok, response} <- SkyfiClient.place_order(api_key, validated_params) do
       Logger.info("Order placed successfully", order_id: Map.get(response, "order_id"))
       format_response(response)
     else

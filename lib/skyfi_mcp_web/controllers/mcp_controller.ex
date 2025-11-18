@@ -1,6 +1,11 @@
 defmodule SkyfiMcpWeb.McpController do
   use SkyfiMcpWeb, :controller
 
+  alias SkyfiMcp.{Repo, RequestLog}
+
+  # Apply authentication to MCP endpoints
+  plug SkyfiMcpWeb.Plugs.AccessKeyAuth when action in [:sse, :message]
+
   @doc """
   Handles SSE connections for MCP.
   GET /mcp/sse
@@ -26,22 +31,55 @@ defmodule SkyfiMcpWeb.McpController do
   POST /mcp/message
   """
   def message(conn, params) do
+    # Extract the user's SkyFi API key from assigns (set by AccessKeyAuth plug)
+    skyfi_api_key = conn.assigns[:skyfi_api_key]
+    access_key = conn.assigns[:access_key]
+
     # Parse JSON-RPC request
     case SkyfiMcp.McpProtocol.JsonRpc.parse_map(params) do
       {:ok, request} ->
-        # TODO: Route to appropriate tool handler based on request.method
-        # For now, just acknowledge the request
-        response = %{
-          jsonrpc: "2.0",
-          id: request.id,
-          result: %{status: "received", method: request.method}
-        }
-        json(conn, response)
+        # Route request to tool router with user's API key
+        opts = [skyfi_api_key: skyfi_api_key]
+        response = SkyfiMcp.ToolRouter.handle_request(request, opts)
+
+        # Log the request
+        log_request(access_key, request, response)
+
+        case response do
+          nil ->
+            # Notification (no response expected)
+            send_resp(conn, 204, "")
+
+          response_map ->
+            json(conn, response_map)
+        end
 
       {:error, error} ->
         # Return JSON-RPC error response
         json(conn, error)
     end
+  end
+
+  defp log_request(access_key, request, response) do
+    tool_name = request.params["name"]
+    success = match?(%{result: _}, response)
+
+    error_message =
+      case response do
+        %{error: error} -> inspect(error)
+        _ -> nil
+      end
+
+    Task.start(fn ->
+      %RequestLog{}
+      |> RequestLog.changeset(%{
+        access_key_id: access_key.id,
+        tool_name: tool_name,
+        success: success,
+        error_message: error_message
+      })
+      |> Repo.insert()
+    end)
   end
 
   defp stream_events(conn) do

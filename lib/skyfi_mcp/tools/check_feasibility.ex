@@ -19,10 +19,15 @@ defmodule SkyfiMcp.Tools.CheckFeasibility do
   - `end_date`: ISO8601 string
   - `sensor_type`: String - "optical" or "sar" (optional, default: "optical")
   - `resolution`: Float - desired resolution in meters (optional)
+
+  Options:
+  - `skyfi_api_key`: SkyFi API key to use for this request (overrides config)
   """
-  def execute(params) do
+  def execute(params, opts \\ []) do
+    api_key = Keyword.get(opts, :skyfi_api_key)
+
     with {:ok, validated_params} <- validate_params(params),
-         {:ok, response} <- SkyfiClient.check_feasibility(validated_params) do
+         {:ok, response} <- SkyfiClient.check_feasibility(api_key, validated_params) do
       format_response(response)
     else
       {:error, reason} -> {:error, reason}

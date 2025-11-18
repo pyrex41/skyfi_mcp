@@ -23,10 +23,15 @@ defmodule SkyfiMcp.Tools.GetPriceEstimate do
   - `start_date`: ISO8601 string (optional for tasking)
   - `end_date`: ISO8601 string (optional for tasking)
   - `priority`: String - "standard", "priority", or "urgent" (optional)
+
+  Options:
+  - `skyfi_api_key`: SkyFi API key to use for this request (overrides config)
   """
-  def execute(params) do
+  def execute(params, opts \\ []) do
+    api_key = Keyword.get(opts, :skyfi_api_key)
+
     with {:ok, validated_params} <- validate_params(params),
-         {:ok, response} <- SkyfiClient.get_price_estimate(validated_params) do
+         {:ok, response} <- SkyfiClient.get_price_estimate(api_key, validated_params) do
       format_response(response)
     else
       {:error, reason} -> {:error, reason}

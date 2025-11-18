@@ -9,9 +9,17 @@ defmodule SkyfiMcpWeb.Router do
     pipe_through :api
   end
 
+  # Health check endpoint (no authentication required)
+  scope "/", SkyfiMcpWeb do
+    pipe_through :api
+
+    get "/health", HealthController, :check
+  end
+
+  # MCP endpoints (authentication required via plug)
   scope "/mcp", SkyfiMcpWeb do
     pipe_through :api
-    
+
     get "/sse", McpController, :sse
     post "/message", McpController, :message
   end

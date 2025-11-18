@@ -9,6 +9,10 @@ kill_timeout = "5s"
 
 [build]
 
+[deploy]
+  # Run migrations automatically on each deployment
+  release_command = "/app/bin/skyfi_mcp eval 'SkyfiMcp.Release.migrate'"
+
 [env]
   DATA = "/data"
   PHX_SERVER = "true"
@@ -23,29 +27,45 @@ kill_timeout = "5s"
   min_machines_running = 0
   processes = ["app"]
 
-  # Health check configuration
+  # Connection limits
   [http_service.concurrency]
     type = "connections"
     hard_limit = 1000
     soft_limit = 500
 
+  # Health check using /health endpoint
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "15s"
+    method = "GET"
+    timeout = "5s"
+    path = "/health"
+
 # Mount persistent volume for SQLite database
+# Create with: fly volumes create data --size 1
 [mounts]
   source = "data"
   destination = "/data"
 
-# VM resources (adjust based on your needs)
+# VM resources
 [vm]
   cpu_kind = "shared"
   cpus = 1
   memory_mb = 512
 
-# Auto-scaling configuration
-[[vm]]
-  memory = '512mb'
-  cpu_kind = 'shared'
-  cpus = 1
-
-# Secrets to set via CLI:
-# fly secrets set SKYFI_API_KEY=your_key_here
-# fly secrets set SECRET_KEY_BASE=$(mix phx.gen.secret)
+# Important: This deployment uses access key authentication
+# Users connect with TWO credentials:
+#   1. Access key (generated via mix tasks) - validates MCP access
+#   2. SkyFi API key (user provides) - used for API requests
+#
+# Admin commands (run via fly ssh console):
+#   mix skyfi.access.create user@example.com "Description"
+#   mix skyfi.access.list
+#   mix skyfi.access.stats
+#   mix skyfi.access.revoke <key>
+#
+# Note: SKYFI_API_KEY secret is NOT required for deployment
+# Users provide their own SkyFi API keys via X-SkyFi-API-Key header
+#
+# Required secrets:
+#   fly secrets set SECRET_KEY_BASE=$(mix phx.gen.secret)
