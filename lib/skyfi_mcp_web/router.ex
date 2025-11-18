@@ -5,6 +5,10 @@ defmodule SkyfiMcpWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :sse do
+    plug :accepts, ["event-stream", "json"]
+  end
+
   scope "/api", SkyfiMcpWeb do
     pipe_through :api
   end
@@ -18,9 +22,14 @@ defmodule SkyfiMcpWeb.Router do
 
   # MCP endpoints (authentication required via plug)
   scope "/mcp", SkyfiMcpWeb do
-    pipe_through :api
+    pipe_through :sse
 
     get "/sse", McpController, :sse
+  end
+
+  scope "/mcp", SkyfiMcpWeb do
+    pipe_through :api
+
     post "/message", McpController, :message
   end
 

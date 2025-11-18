@@ -38,6 +38,15 @@ defmodule Mix.Tasks.SkyfiMcp.Stdio do
 
   @doc false
   def run(_args) do
+    # CRITICAL: Set stdio_mode flag BEFORE app starts
+    # This prevents MonitorWorker startup and disables MCP logging
+    Application.put_env(:skyfi_mcp, :stdio_mode, true)
+
+    # Completely disable ALL logging for stdio mode
+    # Logs on stdout break JSON-RPC protocol
+    Logger.remove_backend(:console)
+    Logger.configure(level: :emergency)
+
     # Start the application
     Mix.Task.run("app.start")
 

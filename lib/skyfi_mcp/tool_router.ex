@@ -9,6 +9,7 @@ defmodule SkyfiMcp.ToolRouter do
   """
 
   require Logger
+  alias SkyfiMcp.McpLogger
   alias SkyfiMcp.McpProtocol.JsonRpc
   alias SkyfiMcp.Tools.SearchArchive
   alias SkyfiMcp.Tools.CheckFeasibility
@@ -31,7 +32,7 @@ defmodule SkyfiMcp.ToolRouter do
   def handle_request(request, opts \\ [])
 
   def handle_request(%JsonRpc.Request{method: "initialize", id: id}, _opts) do
-    Logger.info("MCP: Initializing server")
+    McpLogger.info("MCP: Initializing server")
 
     result = %{
       protocolVersion: "2024-11-05",
@@ -48,7 +49,7 @@ defmodule SkyfiMcp.ToolRouter do
   end
 
   def handle_request(%JsonRpc.Request{method: "tools/list", id: id}, _opts) do
-    Logger.info("MCP: Listing tools")
+    McpLogger.info("MCP: Listing tools")
 
     tools = [
       %{
@@ -367,7 +368,7 @@ defmodule SkyfiMcp.ToolRouter do
     tool_name = Map.get(params, "name")
     tool_arguments = Map.get(params, "arguments", %{})
 
-    Logger.info("MCP: Calling tool #{tool_name}")
+    McpLogger.info("MCP: Calling tool #{tool_name}")
 
     case execute_tool(tool_name, tool_arguments, opts) do
       {:ok, result} ->
@@ -381,19 +382,19 @@ defmodule SkyfiMcp.ToolRouter do
         })
 
       {:error, reason} ->
-        Logger.error("Tool execution failed: #{inspect(reason)}")
+        McpLogger.error("Tool execution failed: #{inspect(reason)}")
         JsonRpc.error_response(id, -32000, "Tool execution failed: #{inspect(reason)}")
     end
   end
 
   def handle_request(%JsonRpc.Request{method: _method, id: nil}, _opts) do
     # Notification (no response expected)
-    Logger.debug("MCP: Received notification, no response needed")
+    McpLogger.debug("MCP: Received notification, no response needed")
     nil
   end
 
   def handle_request(%JsonRpc.Request{method: method, id: id}, _opts) do
-    Logger.warning("MCP: Unknown method: #{method}")
+    McpLogger.warning("MCP: Unknown method: #{method}")
     JsonRpc.method_not_found(id)
   end
 

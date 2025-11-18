@@ -16,7 +16,6 @@ defmodule Mix.Tasks.Skyfi.Access.Revoke do
 
   use Mix.Task
 
-  import Ecto.Query
   alias SkyfiMcp.{Repo, AccessKey}
 
   @shortdoc "Revoke an MCP access key"

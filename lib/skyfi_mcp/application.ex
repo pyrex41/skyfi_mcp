@@ -28,10 +28,10 @@ defmodule SkyfiMcp.Application do
   end
 
   defp monitor_worker_children do
-    if Application.get_env(:skyfi_mcp, :env) == :test do
-      []
-    else
-      [SkyfiMcp.Monitoring.MonitorWorker]
+    cond do
+      Application.get_env(:skyfi_mcp, :env) == :test -> []
+      Application.get_env(:skyfi_mcp, :stdio_mode, false) -> []
+      true -> [SkyfiMcp.Monitoring.MonitorWorker]
     end
   end
 

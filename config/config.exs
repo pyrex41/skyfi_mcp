@@ -39,6 +39,11 @@ config :logger, :default_formatter,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+# Register MIME types for SSE
+config :mime, :types, %{
+  "text/event-stream" => ["event-stream"]
+}
+
 config :tesla, disable_deprecated_builder_warning: true
 
 # Import environment specific config. This must remain at the bottom
