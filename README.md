@@ -283,7 +283,9 @@ Edit Claude Desktop's MCP settings file:
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
-Add the SkyFi MCP server using npx (recommended):
+#### Option 1: stdio with npx Bridge (Recommended)
+
+Uses the npm bridge to connect stdio protocol to remote HTTP server:
 
 ```json
 {
@@ -301,7 +303,14 @@ Add the SkyFi MCP server using npx (recommended):
 }
 ```
 
-**Or use SSE transport (alternative):**
+**Benefits:**
+- ✅ No Elixir installation needed
+- ✅ Works with stdio-only MCP clients
+- ✅ Automatically uses latest version
+
+#### Option 2: SSE Transport
+
+Direct Server-Sent Events connection (persistent connection):
 
 ```json
 {
@@ -320,10 +329,130 @@ Add the SkyFi MCP server using npx (recommended):
 }
 ```
 
+**Benefits:**
+- ✅ Native SSE support
+- ✅ Persistent connection with keep-alive
+- ✅ Real-time updates (for future features)
+
+#### Option 3: HTTP Transport
+
+Direct HTTP JSON-RPC calls (request/response):
+
+```json
+{
+  "mcpServers": {
+    "skyfi": {
+      "transport": {
+        "type": "http",
+        "url": "https://your-deployment.fly.dev/mcp/message",
+        "headers": {
+          "Authorization": "Bearer sk_mcp_your_access_key",
+          "X-SkyFi-API-Key": "your_personal_skyfi_api_key"
+        }
+      }
+    }
+  }
+}
+```
+
+**Benefits:**
+- ✅ Simple request/response model
+- ✅ Works behind corporate firewalls
+- ✅ Easy to debug with curl
+
 **Replace:**
 - `your-deployment.fly.dev` - Actual deployed server URL
 - `sk_mcp_your_access_key` - Access key from admin
 - `your_personal_skyfi_api_key` - Your SkyFi API key
+
+### Configuration for Claude Code
+
+Edit your Claude Code MCP settings:
+
+```bash
+# Option 1: SSE Transport
+claude mcp add --transport sse skyfi https://your-deployment.fly.dev/mcp/sse \
+  --header "Authorization: Bearer sk_mcp_your_access_key" \
+  --header "X-SkyFi-API-Key: your_personal_skyfi_api_key"
+
+# Option 2: HTTP Transport
+claude mcp add --transport http skyfi https://your-deployment.fly.dev/mcp/message \
+  --header "Authorization: Bearer sk_mcp_your_access_key" \
+  --header "X-SkyFi-API-Key: your_personal_skyfi_api_key"
+
+# Option 3: Local stdio (if you have Elixir installed)
+claude mcp add skyfi -- mix skyfi_mcp.stdio
+```
+
+### Configuration for Opencode
+
+Edit your Opencode configuration file:
+
+#### Option 1: HTTP Transport (Remote)
+
+```json
+{
+  "mcp": {
+    "skyfi": {
+      "type": "remote",
+      "url": "https://your-deployment.fly.dev/mcp/message",
+      "headers": {
+        "Authorization": "Bearer sk_mcp_your_access_key",
+        "X-SkyFi-API-Key": "your_personal_skyfi_api_key"
+      },
+      "enabled": true
+    }
+  }
+}
+```
+
+#### Option 2: stdio with npx Bridge (Local)
+
+```json
+{
+  "mcp": {
+    "skyfi": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "skyfi-mcp-client",
+        "--server", "https://your-deployment.fly.dev",
+        "--access-key", "sk_mcp_your_access_key",
+        "--api-key", "your_personal_skyfi_api_key"
+      ],
+      "enabled": true
+    }
+  }
+}
+```
+
+#### Option 3: Native stdio (if you have Elixir installed)
+
+```json
+{
+  "mcp": {
+    "skyfi": {
+      "type": "local",
+      "command": ["mix", "skyfi_mcp.stdio"],
+      "cwd": "/absolute/path/to/skyfi_mcp",
+      "env": {
+        "SKYFI_API_KEY": "your_skyfi_api_key"
+      },
+      "enabled": true
+    }
+  }
+}
+```
+
+### Transport Comparison
+
+| Transport | Claude Desktop | Claude Code | Opencode | Use Case |
+|-----------|----------------|-------------|----------|----------|
+| **stdio + npx** | ✅ | ✅ | ✅ | Remote server, no Elixir needed |
+| **SSE** | ✅ | ✅ | ❌ | Real-time updates, persistent connection |
+| **HTTP** | ✅ | ✅ | ✅ | Simple, firewall-friendly |
+| **stdio (native)** | ✅ | ✅ | ✅ | Local development only |
 
 **Important Notes:**
 - The access key (`Authorization` header) validates you can use the MCP server
