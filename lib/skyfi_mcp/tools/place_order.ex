@@ -11,6 +11,7 @@ defmodule SkyfiMcp.Tools.PlaceOrder do
 
   require Logger
   alias SkyfiMcp.SkyfiClient
+  alias SkyfiMcp.AoiConverter
 
   @high_value_threshold 500.0
 
@@ -106,9 +107,29 @@ defmodule SkyfiMcp.Tools.PlaceOrder do
         {:error, "Invalid sensor_type. Must be 'optical' or 'sar'"}
 
       true ->
-        {:ok, params}
+        # Convert AOI to WKT format
+        aoi_input = parse_aoi_input(aoi)
+
+        case AoiConverter.to_wkt(aoi_input) do
+          {:ok, wkt_aoi} ->
+            updated_params = Map.put(params, "aoi", wkt_aoi)
+            {:ok, updated_params}
+
+          {:error, reason} ->
+            {:error, "Invalid AOI: #{reason}"}
+        end
     end
   end
+
+  # Parse AOI input - it might be a JSON string or already parsed
+  defp parse_aoi_input(aoi) when is_binary(aoi) do
+    case Jason.decode(aoi) do
+      {:ok, parsed} -> parsed
+      {:error, _} -> aoi  # Already a WKT string
+    end
+  end
+
+  defp parse_aoi_input(aoi), do: aoi
 
   defp check_price_confirmation(params) do
     price_confirmed = Map.get(params, "price_confirmed", false)

@@ -9,6 +9,7 @@ defmodule SkyfiMcp.Tools.GetPriceEstimate do
   """
 
   alias SkyfiMcp.SkyfiClient
+  alias SkyfiMcp.AoiConverter
 
   @doc """
   Executes the get_price_estimate tool.
@@ -17,7 +18,7 @@ defmodule SkyfiMcp.Tools.GetPriceEstimate do
   - `image_id`: String - ID of archive image
 
   Tasking mode params:
-  - `aoi`: GeoJSON Polygon or BBox [min_lon, min_lat, max_lon, max_lat]
+  - `aoi`: WKT POLYGON string, bounding box as JSON string, or GeoJSON Polygon as JSON string
   - `sensor_type`: String - "optical" or "sar"
   - `resolution`: Float - desired resolution in meters (optional)
   - `start_date`: ISO8601 string (optional for tasking)
@@ -30,7 +31,7 @@ defmodule SkyfiMcp.Tools.GetPriceEstimate do
   def execute(params, opts \\ []) do
     api_key = Keyword.get(opts, :skyfi_api_key)
 
-    with {:ok, validated_params} <- validate_params(params),
+    with {:ok, validated_params} <- validate_and_convert_params(params),
          {:ok, response} <- SkyfiClient.get_price_estimate(api_key, validated_params) do
       format_response(response)
     else
@@ -38,7 +39,7 @@ defmodule SkyfiMcp.Tools.GetPriceEstimate do
     end
   end
 
-  defp validate_params(params) do
+  defp validate_and_convert_params(params) do
     cond do
       # Archive mode
       Map.has_key?(params, "image_id") ->
@@ -46,7 +47,7 @@ defmodule SkyfiMcp.Tools.GetPriceEstimate do
 
       # Tasking mode
       Map.has_key?(params, "aoi") ->
-        validate_tasking_params(params)
+        validate_and_convert_tasking_params(params)
 
       true ->
         {:error, "Must provide either 'image_id' (archive) or 'aoi' (tasking)"}
@@ -63,7 +64,7 @@ defmodule SkyfiMcp.Tools.GetPriceEstimate do
     end
   end
 
-  defp validate_tasking_params(params) do
+  defp validate_and_convert_tasking_params(params) do
     aoi = Map.get(params, "aoi")
     sensor_type = Map.get(params, "sensor_type")
 
@@ -78,9 +79,29 @@ defmodule SkyfiMcp.Tools.GetPriceEstimate do
         {:error, "Invalid sensor_type. Must be 'optical' or 'sar'"}
 
       true ->
-        {:ok, params}
+        # Convert AOI to WKT format
+        aoi_input = parse_aoi_input(aoi)
+
+        case AoiConverter.to_wkt(aoi_input) do
+          {:ok, wkt_aoi} ->
+            updated_params = Map.put(params, "aoi", wkt_aoi)
+            {:ok, updated_params}
+
+          {:error, reason} ->
+            {:error, "Invalid AOI: #{reason}"}
+        end
     end
   end
+
+  # Parse AOI input - it might be a JSON string or already parsed
+  defp parse_aoi_input(aoi) when is_binary(aoi) do
+    case Jason.decode(aoi) do
+      {:ok, parsed} -> parsed
+      {:error, _} -> aoi  # Already a WKT string
+    end
+  end
+
+  defp parse_aoi_input(aoi), do: aoi
 
   defp format_response(body) when is_map(body) do
     # Format the API response into a clean structure

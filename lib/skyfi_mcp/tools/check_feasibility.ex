@@ -7,6 +7,7 @@ defmodule SkyfiMcp.Tools.CheckFeasibility do
   """
 
   alias SkyfiMcp.SkyfiClient
+  alias SkyfiMcp.AoiConverter
 
   @valid_sensors ["optical", "sar"]
 
@@ -14,7 +15,7 @@ defmodule SkyfiMcp.Tools.CheckFeasibility do
   Executes the check_feasibility tool.
 
   Expected params:
-  - `aoi`: GeoJSON Polygon or BBox [min_lon, min_lat, max_lon, max_lat]
+  - `aoi`: WKT POLYGON string, bounding box as JSON string, or GeoJSON Polygon as JSON string
   - `start_date`: ISO8601 string (e.g., "2023-01-01T00:00:00Z")
   - `end_date`: ISO8601 string
   - `sensor_type`: String - "optical" or "sar" (optional, default: "optical")
@@ -26,7 +27,7 @@ defmodule SkyfiMcp.Tools.CheckFeasibility do
   def execute(params, opts \\ []) do
     api_key = Keyword.get(opts, :skyfi_api_key)
 
-    with {:ok, validated_params} <- validate_params(params),
+    with {:ok, validated_params} <- validate_and_convert_params(params),
          {:ok, response} <- SkyfiClient.check_feasibility(api_key, validated_params) do
       format_response(response)
     else
@@ -34,7 +35,7 @@ defmodule SkyfiMcp.Tools.CheckFeasibility do
     end
   end
 
-  defp validate_params(params) do
+  defp validate_and_convert_params(params) do
     aoi = Map.get(params, "aoi")
     start_date = Map.get(params, "start_date")
     end_date = Map.get(params, "end_date")
@@ -54,9 +55,29 @@ defmodule SkyfiMcp.Tools.CheckFeasibility do
         {:error, "Invalid sensor_type. Must be one of: #{Enum.join(@valid_sensors, ", ")}"}
 
       true ->
-        {:ok, params}
+        # Convert AOI to WKT format
+        aoi_input = parse_aoi_input(aoi)
+
+        case AoiConverter.to_wkt(aoi_input) do
+          {:ok, wkt_aoi} ->
+            updated_params = Map.put(params, "aoi", wkt_aoi)
+            {:ok, updated_params}
+
+          {:error, reason} ->
+            {:error, "Invalid AOI: #{reason}"}
+        end
     end
   end
+
+  # Parse AOI input - it might be a JSON string or already parsed
+  defp parse_aoi_input(aoi) when is_binary(aoi) do
+    case Jason.decode(aoi) do
+      {:ok, parsed} -> parsed
+      {:error, _} -> aoi  # Already a WKT string
+    end
+  end
+
+  defp parse_aoi_input(aoi), do: aoi
 
   defp format_response(body) when is_map(body) do
     # Format the API response into a clean structure

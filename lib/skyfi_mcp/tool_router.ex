@@ -35,7 +35,7 @@ defmodule SkyfiMcp.ToolRouter do
     McpLogger.info("MCP: Initializing server")
 
     result = %{
-      protocolVersion: "2024-11-05",
+      protocolVersion: "2025-06-18",
       capabilities: %{
         tools: %{},
         prompts: %{}
@@ -60,9 +60,8 @@ defmodule SkyfiMcp.ToolRouter do
           type: "object",
           properties: %{
             aoi: %{
-              type: "array",
-              description: "Bounding box as [min_lon, min_lat, max_lon, max_lat] or GeoJSON Polygon",
-              items: %{type: "number"}
+              type: "string",
+              description: "Area of interest as WKT POLYGON string (e.g., 'POLYGON((-122.5 37.7, -122.3 37.7, -122.3 37.9, -122.5 37.9, -122.5 37.7))'), bounding box as JSON array string '[min_lon, min_lat, max_lon, max_lat]', or GeoJSON Polygon as JSON string"
             },
             start_date: %{
               type: "string",
@@ -92,9 +91,8 @@ defmodule SkyfiMcp.ToolRouter do
           type: "object",
           properties: %{
             aoi: %{
-              type: "array",
-              description: "Bounding box as [min_lon, min_lat, max_lon, max_lat] or GeoJSON Polygon",
-              items: %{type: "number"}
+              type: "string",
+              description: "Area of interest as WKT POLYGON string (e.g., 'POLYGON((-122.5 37.7, -122.3 37.7, -122.3 37.9, -122.5 37.9, -122.5 37.7))'), bounding box as JSON array string '[min_lon, min_lat, max_lon, max_lat]', or GeoJSON Polygon as JSON string"
             },
             start_date: %{
               type: "string",
@@ -131,9 +129,8 @@ defmodule SkyfiMcp.ToolRouter do
               description: "Archive image ID (for archive pricing)"
             },
             aoi: %{
-              type: "array",
-              description: "Bounding box for tasking (required for tasking pricing)",
-              items: %{type: "number"}
+              type: "string",
+              description: "Area of interest for tasking pricing - WKT POLYGON string, bounding box as JSON array string '[min_lon, min_lat, max_lon, max_lat]', or GeoJSON Polygon as JSON string"
             },
             sensor_type: %{
               type: "string",
@@ -169,9 +166,8 @@ defmodule SkyfiMcp.ToolRouter do
               description: "Archive image ID (required for archive orders)"
             },
             aoi: %{
-              type: "array",
-              description: "Bounding box (required for tasking orders)",
-              items: %{type: "number"}
+              type: "string",
+              description: "Area of interest for tasking orders - WKT POLYGON string, bounding box as JSON array string '[min_lon, min_lat, max_lon, max_lat]', or GeoJSON Polygon as JSON string"
             },
             sensor_type: %{
               type: "string",
@@ -304,24 +300,8 @@ defmodule SkyfiMcp.ToolRouter do
           type: "object",
           properties: %{
             aoi: %{
-              oneOf: [
-                %{
-                  type: "array",
-                  description: "Bounding box as [min_lon, min_lat, max_lon, max_lat]",
-                  items: %{type: "number"},
-                  minItems: 4,
-                  maxItems: 4
-                },
-                %{
-                  type: "object",
-                  description: "GeoJSON Polygon",
-                  required: ["type", "coordinates"],
-                  properties: %{
-                    type: %{type: "string", enum: ["Polygon", "MultiPolygon"]},
-                    coordinates: %{type: "array"}
-                  }
-                }
-              ]
+              type: "string",
+              description: "Area of interest to monitor - WKT POLYGON string (e.g., 'POLYGON((-122.5 37.7, -122.3 37.7, -122.3 37.9, -122.5 37.9, -122.5 37.7))'), bounding box as JSON array string '[min_lon, min_lat, max_lon, max_lat]', or GeoJSON Polygon as JSON string"
             },
             webhook_url: %{
               type: "string",
