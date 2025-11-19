@@ -1,6 +1,6 @@
 {
-  "name": "@skyfi/mcp-client",
-  "version": "1.0.0",
+  "name": "skyfi-mcp-client",
+  "version": "0.1.0",
   "description": "SkyFi MCP client bridge - connects to remote SkyFi MCP server",
   "main": "dist/index.js",
   "bin": {
@@ -36,7 +36,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/skyfi_mcp.git",
+    "url": "git+https://github.com/pyrex41/skyfi_mcp.git",
     "directory": "npm-bridge"
+  },
+  "homepage": "https://github.com/pyrex41/skyfi_mcp#readme",
+  "bugs": {
+    "url": "https://github.com/pyrex41/skyfi_mcp/issues"
   }
 }
