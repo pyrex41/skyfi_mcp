@@ -90,8 +90,8 @@ export class SkyFiMcpClient {
 
         res.on('end', () => {
           if (res.statusCode === 204) {
-            // No content (notification)
-            resolve({ jsonrpc: '2.0', result: null, id: null });
+            // No content (notification) - don't include id field
+            resolve({ jsonrpc: '2.0', result: null } as any);
             return;
           }
 
