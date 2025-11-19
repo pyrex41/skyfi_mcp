@@ -8,15 +8,14 @@ defmodule SkyfiMcp.Tools.SetupMonitor do
 
   require Logger
   alias SkyfiMcp.Monitoring
+  alias SkyfiMcp.AoiConverter
 
   @doc """
   Executes the setup_monitor tool.
 
   ## Parameters
 
-    - `aoi` - Area of interest as either:
-      - Bounding box: `[min_lon, min_lat, max_lon, max_lat]`
-      - GeoJSON Polygon: `%{"type" => "Polygon", "coordinates" => [...]}`
+    - `aoi` - Area of interest as WKT POLYGON string, bounding box as JSON string, or GeoJSON Polygon as JSON string
     - `webhook_url` - HTTPS URL to receive notifications (required)
     - `cloud_cover_max` - Maximum cloud cover percentage (0-100, default: 100)
     - `sensor_types` - Array of sensor types to monitor (default: ["optical"])
@@ -38,7 +37,8 @@ defmodule SkyfiMcp.Tools.SetupMonitor do
     params_with_key = if api_key, do: Map.put(params, "api_key", api_key), else: params
 
     with {:ok, validated_params} <- validate_params(params_with_key),
-         {:ok, normalized_params} <- normalize_params(validated_params),
+         {:ok, params_with_converted_aoi} <- convert_aoi(validated_params),
+         {:ok, normalized_params} <- normalize_params(params_with_converted_aoi),
          {:ok, monitor} <- Monitoring.create_monitor(normalized_params) do
       format_response(monitor)
     else
@@ -49,6 +49,32 @@ defmodule SkyfiMcp.Tools.SetupMonitor do
         {:error, reason}
     end
   end
+
+  defp convert_aoi(params) do
+    aoi = Map.get(params, "aoi")
+    aoi_input = parse_aoi_input(aoi)
+
+    # Convert to WKT first (for API compatibility), then back to GeoJSON for storage
+    case AoiConverter.to_wkt(aoi_input) do
+      {:ok, _wkt_aoi} ->
+        # Now convert to GeoJSON format for internal storage
+        geojson_aoi = normalize_aoi(aoi_input)
+        {:ok, Map.put(params, "aoi", geojson_aoi)}
+
+      {:error, reason} ->
+        {:error, "Invalid AOI: #{reason}"}
+    end
+  end
+
+  # Parse AOI input - it might be a JSON string or already parsed
+  defp parse_aoi_input(aoi) when is_binary(aoi) do
+    case Jason.decode(aoi) do
+      {:ok, parsed} -> parsed
+      {:error, _} -> aoi  # Already a WKT string (which we'll need to convert)
+    end
+  end
+
+  defp parse_aoi_input(aoi), do: aoi
 
   defp validate_params(params) do
     required = ["aoi", "webhook_url"]
