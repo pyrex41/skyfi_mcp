@@ -23,10 +23,17 @@ defmodule SkyfiMcp.McpProtocol.JsonRpc do
     defimpl Jason.Encoder, for: __MODULE__ do
       def encode(response, opts) do
         # JSON-RPC 2.0: response MUST have either result or error, not both
+        # Don't include id field if it's nil (for notifications/errors without id)
         map = %{
-          jsonrpc: response.jsonrpc,
-          id: response.id
+          jsonrpc: response.jsonrpc
         }
+
+        # Only include id if it's not nil
+        map = if response.id != nil do
+          Map.put(map, :id, response.id)
+        else
+          map
+        end
 
         map =
           cond do
