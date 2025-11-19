@@ -38,20 +38,22 @@ defmodule SkyfiMcpWeb.McpController do
     # Parse JSON-RPC request
     case SkyfiMcp.McpProtocol.JsonRpc.parse_map(params) do
       {:ok, request} ->
-        # Route request to tool router with user's API key
-        opts = [skyfi_api_key: skyfi_api_key]
-        response = SkyfiMcp.ToolRouter.handle_request(request, opts)
+        # Check if this is a notification (id is nil) - notifications don't get responses
+        if request.id == nil do
+          # Log the notification
+          log_request(access_key, request, nil)
+          # Return 204 No Content for notifications
+          send_resp(conn, 204, "")
+        else
+          # Route request to tool router with user's API key
+          opts = [skyfi_api_key: skyfi_api_key]
+          response = SkyfiMcp.ToolRouter.handle_request(request, opts)
 
-        # Log the request
-        log_request(access_key, request, response)
+          # Log the request
+          log_request(access_key, request, response)
 
-        case response do
-          nil ->
-            # Notification (no response expected)
-            send_resp(conn, 204, "")
-
-          response_map ->
-            json(conn, response_map)
+          # Send response
+          json(conn, response)
         end
 
       {:error, error} ->

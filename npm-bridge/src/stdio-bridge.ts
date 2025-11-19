@@ -14,9 +14,9 @@ export class StdioBridge {
     this.debug = config.debug || false;
 
     // Create readline interface for stdin
+    // Note: No output param - stdout is reserved for JSON-RPC responses only
     this.rl = readline.createInterface({
       input: process.stdin,
-      output: process.stdout,
       terminal: false,
     });
   }
