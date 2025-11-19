@@ -21,6 +21,7 @@ test
 
 # Documentation
 log_docs
+ai_docs
 .taskmaster
 *.md
 !README.md
