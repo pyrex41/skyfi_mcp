@@ -1,6 +1,5 @@
 {
   "disabledMcpjsonServers": [
-    "task-master-ai",
-    "skyfi-remote"
+    "task-master-ai"
   ]
 }

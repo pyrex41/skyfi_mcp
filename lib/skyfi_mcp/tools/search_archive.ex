@@ -20,6 +20,15 @@ defmodule SkyfiMcp.Tools.SearchArchive do
   def execute(params, opts \\ []) do
     api_key = Keyword.get(opts, :skyfi_api_key)
 
+    # Debug logging
+    require Logger
+    key_preview = if api_key && String.length(api_key) >= 6 do
+      "#{String.slice(api_key, 0, 3)}...#{String.slice(api_key, -3, 3)}"
+    else
+      "<none or too short>"
+    end
+    Logger.info("SearchArchive: Using API key: #{key_preview}")
+
     with {:ok, validated_params} <- validate_params(params),
          {:ok, body} <- SkyfiClient.search_archive(api_key, validated_params) do
       format_response(body)

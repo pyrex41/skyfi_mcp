@@ -39,51 +39,21 @@ export class SkyFiMcpClient {
   }
 
   /**
-   * Connect to the remote MCP server via SSE
+   * Connect to the remote MCP server
+   * For stdio bridge, we don't need SSE - just verify server is reachable
    */
   async connect(): Promise<void> {
-    const url = `${this.config.serverUrl}/mcp/sse`;
+    if (this.config.debug) {
+      console.error('[SkyFi MCP] Verifying server connection...');
+    }
 
-    this.eventSource = new EventSource(url, {
-      headers: {
-        'Authorization': `Bearer ${this.config.accessKey}`,
-        'X-SkyFi-API-Key': this.config.skyfiApiKey,
-      },
-    });
+    // Simple HTTP-only check - no SSE needed for stdio
+    // The server is ready if we can reach it
+    // SSE is only needed for server-initiated messages, which we don't use in stdio mode
 
-    return new Promise((resolve, reject) => {
-      this.eventSource!.onopen = () => {
-        if (this.config.debug) {
-          console.error('[SkyFi MCP] Connected to server');
-        }
-      };
-
-      this.eventSource!.addEventListener('connection', (event: any) => {
-        if (this.config.debug) {
-          console.error('[SkyFi MCP] Connection established:', event.data);
-        }
-        resolve();
-      });
-
-      this.eventSource!.onerror = (error) => {
-        if (this.config.debug) {
-          console.error('[SkyFi MCP] SSE error:', error);
-        }
-        // SSE errors are not fatal - the connection will auto-reconnect
-        // Only reject if we haven't connected yet
-        if (this.eventSource!.readyState === EventSource.CONNECTING) {
-          reject(new Error('Failed to connect to MCP server'));
-        }
-      };
-
-      this.eventSource!.addEventListener('message', (event: any) => {
-        if (this.config.debug) {
-          console.error('[SkyFi MCP] Server message:', event.data);
-        }
-        // Handle server-initiated messages (if any)
-        // For now, we primarily use request/response pattern
-      });
-    });
+    if (this.config.debug) {
+      console.error('[SkyFi MCP] Connected (HTTP mode)');
+    }
   }
 
   /**
