@@ -368,7 +368,14 @@ defmodule SkyfiMcp.SkyfiClient do
   end
 
   defp handle_error(401, _body) do
-    Logger.error("SkyFi API: Invalid API key (401)")
+    # Log first 3 and last 3 chars of API key for debugging
+    api_key = get_api_key()
+    key_preview = if api_key && String.length(api_key) >= 6 do
+      "#{String.slice(api_key, 0, 3)}...#{String.slice(api_key, -3, 3)}"
+    else
+      "<none or too short>"
+    end
+    Logger.error("SkyFi API: Invalid API key (401) - Using key: #{key_preview}")
     {:error, :invalid_api_key}
   end
 
