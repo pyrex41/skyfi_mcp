@@ -19,11 +19,13 @@
       }
     },
     "skyfi": {
-      "command": "skyfi-mcp",
+      "command": "npx",
       "args": [
-        "-s", "https://skyfi-mcp.fly.dev",
-        "-a", "sk_mcp_9a7312e31449dea2cd075997284c6f6b6261c0abebad48adc62a66bcd3e48aba",
-        "-k", "YOUR_SKYFI_API_KEY_HERE"
+        "-y",
+        "skyfi-mcp-client",
+        "--server", "https://skyfi-mcp.fly.dev",
+        "--access-key", "sk_mcp_9a7312e31449dea2cd075997284c6f6b6261c0abebad48adc62a66bcd3e48aba",
+        "--api-key", "YOUR_SKYFI_API_KEY_HERE"
       ]
     }
   }
