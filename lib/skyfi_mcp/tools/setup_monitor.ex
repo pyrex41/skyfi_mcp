@@ -179,10 +179,13 @@ defmodule SkyfiMcp.Tools.SetupMonitor do
        check_interval_seconds: monitor.check_interval,
        next_check_at: calculate_next_check(monitor),
        webhook_url: monitor.webhook_url,
+       webhook_secret: monitor.webhook_secret,
        aoi: monitor.aoi,
        criteria: monitor.criteria,
        message:
-         "Monitor created successfully. You will receive notifications at the configured webhook URL when new imagery matching your criteria becomes available."
+         "Monitor created successfully. You will receive notifications at the configured webhook URL when new imagery matching your criteria becomes available.",
+       security_info:
+         "Webhook payloads are signed with HMAC-SHA256. Verify signatures using the webhook_secret and the X-SkyFi-Signature header."
      }}
   end
 

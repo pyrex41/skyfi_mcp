@@ -147,20 +147,34 @@ defmodule SkyfiMcp.Tools.ReverseGeocode do
 
       {:error, {:not_found, msg}} ->
         Logger.info("No location found for #{lat}, #{lon}: #{msg}")
-        {:error, "No location found at these coordinates"}
+        {:error, "No location found at coordinates (#{lat}, #{lon}). This area may be in open water or remote terrain."}
 
       {:error, :rate_limit_exceeded} ->
-        {:error, "Rate limit exceeded. Please try again in a moment."}
+        {:error,
+         "Rate limit exceeded for OpenStreetMap Nominatim (1 request/second). Please try again in a moment."}
 
       {:error, :timeout} ->
-        {:error, "Reverse geocoding request timed out. Please try again."}
+        {:error,
+         "Reverse geocoding request timed out after 10 seconds. The OpenStreetMap service may be slow or unreachable."}
 
       {:error, :connection_refused} ->
-        {:error, "Unable to connect to geocoding service"}
+        {:error,
+         "Unable to connect to OpenStreetMap geocoding service. Please check your internet connection or try again later."}
+
+      {:error, :forbidden} ->
+        {:error,
+         "Access forbidden by OpenStreetMap. This may indicate a User-Agent issue or policy violation."}
+
+      {:error, {:http_error, status}} ->
+        {:error, "OpenStreetMap API returned HTTP #{status}. The service may be experiencing issues."}
+
+      {:error, {:network_error, reason}} ->
+        Logger.warning("Reverse geocoding network error: #{inspect(reason)}")
+        {:error, "Network error while connecting to geocoding service: #{format_network_error(reason)}"}
 
       {:error, reason} ->
         Logger.warning("Reverse geocoding failed: #{inspect(reason)}")
-        {:error, "Geocoding service error: #{inspect(reason)}"}
+        {:error, "Geocoding service error: #{format_error_reason(reason)}"}
     end
   end
 
@@ -178,4 +192,18 @@ defmodule SkyfiMcp.Tools.ReverseGeocode do
       service: "OpenStreetMap Nominatim"
     }
   end
+
+  # Error Formatting
+
+  defp format_network_error(%Tesla.Error{reason: reason}), do: format_network_error(reason)
+  defp format_network_error(:econnrefused), do: "Connection refused"
+  defp format_network_error(:nxdomain), do: "DNS lookup failed"
+  defp format_network_error(:closed), do: "Connection closed unexpectedly"
+  defp format_network_error(reason) when is_atom(reason), do: Atom.to_string(reason)
+  defp format_network_error(reason), do: inspect(reason)
+
+  defp format_error_reason({:not_found, msg}), do: "Location not found: #{msg}"
+  defp format_error_reason(reason) when is_atom(reason), do: Atom.to_string(reason)
+  defp format_error_reason(reason) when is_binary(reason), do: reason
+  defp format_error_reason(reason), do: inspect(reason)
 end

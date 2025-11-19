@@ -19,6 +19,16 @@ defmodule SkyfiMcp.Monitoring.MonitorWorker do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [opts]},
+      restart: :permanent,  # Always restart on crashes
+      shutdown: 5000,
+      type: :worker
+    }
+  end
+
   @doc """
   Returns the current status of the worker.
   """
@@ -39,38 +49,50 @@ defmodule SkyfiMcp.Monitoring.MonitorWorker do
 
     start_time = System.monotonic_time()
 
-    monitors = Monitoring.list_active_monitors_due_for_check()
+    try do
+      monitors = Monitoring.list_active_monitors_due_for_check()
 
-    Logger.info("MonitorWorker: Found #{length(monitors)} monitors to check")
+      Logger.info("MonitorWorker: Found #{length(monitors)} monitors to check")
 
-    # Process each monitor
-    results = Enum.map(monitors, &check_monitor/1)
+      # Process each monitor with error isolation
+      results = Enum.map(monitors, &check_monitor_safe/1)
 
-    successes = Enum.count(results, &match?({:ok, _}, &1))
-    failures = Enum.count(results, &match?({:error, _}, &1))
+      successes = Enum.count(results, &match?({:ok, _}, &1))
+      failures = Enum.count(results, &match?({:error, _}, &1))
 
-    elapsed_ms =
-      System.convert_time_unit(
-        System.monotonic_time() - start_time,
-        :native,
-        :millisecond
+      elapsed_ms =
+        System.convert_time_unit(
+          System.monotonic_time() - start_time,
+          :native,
+          :millisecond
+        )
+
+      Logger.info(
+        "MonitorWorker: Completed check cycle - " <>
+          "#{successes} successful, #{failures} failed, #{elapsed_ms}ms elapsed"
       )
 
-    Logger.info(
-      "MonitorWorker: Completed check cycle - " <>
-        "#{successes} successful, #{failures} failed, #{elapsed_ms}ms elapsed"
-    )
+      # Schedule next check
+      schedule_check(@check_interval)
 
-    # Schedule next check
-    schedule_check(@check_interval)
+      new_state = %{
+        state
+        | checks_performed: state.checks_performed + 1,
+          last_check: DateTime.utc_now()
+      }
 
-    new_state = %{
-      state
-      | checks_performed: state.checks_performed + 1,
-        last_check: DateTime.utc_now()
-    }
+      {:noreply, new_state}
+    rescue
+      error ->
+        Logger.error(
+          "MonitorWorker: Unexpected error during check cycle: #{inspect(error)}\n#{Exception.format_stacktrace()}"
+        )
 
-    {:noreply, new_state}
+        # Schedule next check even on error to ensure worker continues
+        schedule_check(@check_interval)
+
+        {:noreply, state}
+    end
   end
 
   @impl true
@@ -78,8 +100,37 @@ defmodule SkyfiMcp.Monitoring.MonitorWorker do
     {:reply, state, state}
   end
 
+  @impl true
+  def terminate(reason, state) do
+    Logger.warning(
+      "MonitorWorker: Terminating after #{state.checks_performed} checks. Reason: #{inspect(reason)}"
+    )
+
+    :ok
+  end
+
   defp schedule_check(delay) do
     Process.send_after(self(), :check_monitors, delay)
+  end
+
+  defp check_monitor_safe(monitor) do
+    try do
+      check_monitor(monitor)
+    rescue
+      error ->
+        Logger.error(
+          "MonitorWorker: Exception while checking monitor #{monitor.id}: #{inspect(error)}\n#{Exception.format_stacktrace()}"
+        )
+
+        {:error, {:exception, error}}
+    catch
+      kind, reason ->
+        Logger.error(
+          "MonitorWorker: Caught #{kind} while checking monitor #{monitor.id}: #{inspect(reason)}"
+        )
+
+        {:error, {kind, reason}}
+    end
   end
 
   defp check_monitor(monitor) do

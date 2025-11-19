@@ -20,6 +20,7 @@ defmodule SkyfiMcp.Monitor do
     field :aoi, :map
     field :criteria, :map
     field :webhook_url, :string
+    field :webhook_secret, :string
     field :check_interval, :integer, default: 86400  # seconds (default: daily)
     field :last_checked_at, :utc_datetime
     field :last_image_id, :string
@@ -38,17 +39,37 @@ defmodule SkyfiMcp.Monitor do
       :aoi,
       :criteria,
       :webhook_url,
+      :webhook_secret,
       :check_interval,
       :last_checked_at,
       :last_image_id,
       :status
     ])
     |> validate_required([:user_api_key_hash, :aoi, :criteria, :webhook_url])
+    |> put_webhook_secret()
     |> validate_inclusion(:status, @valid_statuses)
     |> validate_number(:check_interval, greater_than: 0)
     |> validate_url(:webhook_url)
     |> validate_aoi()
     |> validate_criteria()
+  end
+
+  defp put_webhook_secret(changeset) do
+    # Generate a webhook secret if not provided
+    case get_field(changeset, :webhook_secret) do
+      nil ->
+        secret = generate_webhook_secret()
+        put_change(changeset, :webhook_secret, secret)
+
+      _secret ->
+        changeset
+    end
+  end
+
+  defp generate_webhook_secret do
+    # Generate 32 bytes (256 bits) of random data, hex-encoded
+    :crypto.strong_rand_bytes(32)
+    |> Base.encode16(case: :lower)
   end
 
   defp validate_url(changeset, field) do

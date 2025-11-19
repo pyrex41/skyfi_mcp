@@ -36,17 +36,33 @@ defmodule SkyfiMcp.Monitoring.WebhookNotifier do
       "WebhookNotifier: Delivering #{length(new_images)} new images to #{monitor.webhook_url}"
     )
 
-    deliver_with_retry(monitor.webhook_url, payload, 0)
+    # Publish to PubSub for SSE clients
+    publish_to_sse(monitor, payload)
+
+    # Deliver webhook
+    deliver_with_retry(monitor, payload, 0)
   end
 
   def deliver(_monitor, []) do
     {:ok, :no_new_images}
   end
 
-  defp deliver_with_retry(url, payload, attempt) when attempt < @max_retries do
-    case post(url, payload) do
+  defp deliver_with_retry(monitor, payload, attempt) when attempt < @max_retries do
+    # Sign the payload with the monitor's webhook secret
+    signature = sign_payload(payload, monitor.webhook_secret)
+
+    # Include signature in headers
+    headers = [
+      {"X-SkyFi-Signature", signature},
+      {"X-SkyFi-Timestamp", payload.timestamp}
+    ]
+
+    case post(monitor.webhook_url, payload, headers: headers) do
       {:ok, %Tesla.Env{status: status}} when status in 200..299 ->
-        Logger.info("WebhookNotifier: Successfully delivered to #{url} (status: #{status})")
+        Logger.info(
+          "WebhookNotifier: Successfully delivered to #{monitor.webhook_url} (status: #{status})"
+        )
+
         {:ok, :delivered}
 
       {:ok, %Tesla.Env{status: status, body: body}} ->
@@ -54,20 +70,23 @@ defmodule SkyfiMcp.Monitoring.WebhookNotifier do
           "WebhookNotifier: Webhook returned status #{status}: #{inspect(body)}"
         )
 
-        retry_delivery(url, payload, attempt)
+        retry_delivery(monitor, payload, attempt)
 
       {:error, reason} ->
         Logger.warning("WebhookNotifier: Delivery failed - #{inspect(reason)}")
-        retry_delivery(url, payload, attempt)
+        retry_delivery(monitor, payload, attempt)
     end
   end
 
-  defp deliver_with_retry(url, _payload, _attempt) do
-    Logger.error("WebhookNotifier: Max retries (#{@max_retries}) exceeded for #{url}")
+  defp deliver_with_retry(monitor, _payload, _attempt) do
+    Logger.error(
+      "WebhookNotifier: Max retries (#{@max_retries}) exceeded for #{monitor.webhook_url}"
+    )
+
     {:error, :max_retries_exceeded}
   end
 
-  defp retry_delivery(url, payload, attempt) do
+  defp retry_delivery(monitor, payload, attempt) do
     delay = calculate_backoff(attempt)
 
     Logger.info(
@@ -75,7 +94,7 @@ defmodule SkyfiMcp.Monitoring.WebhookNotifier do
     )
 
     Process.sleep(delay)
-    deliver_with_retry(url, payload, attempt + 1)
+    deliver_with_retry(monitor, payload, attempt + 1)
   end
 
   defp calculate_backoff(attempt) do
@@ -108,5 +127,28 @@ defmodule SkyfiMcp.Monitoring.WebhookNotifier do
         resolution: img["resolution"]
       }
     end)
+  end
+
+  defp sign_payload(payload, webhook_secret) do
+    # Convert payload to JSON string
+    payload_json = Jason.encode!(payload)
+
+    # Create HMAC-SHA256 signature
+    :crypto.mac(:hmac, :sha256, webhook_secret, payload_json)
+    |> Base.encode16(case: :lower)
+  end
+
+  defp publish_to_sse(monitor, payload) do
+    # Publish monitor alert to PubSub for SSE clients
+    # Topic is based on user's API key hash for multi-tenant isolation
+    topic = "user:#{monitor.user_api_key_hash}"
+
+    Phoenix.PubSub.broadcast(
+      SkyfiMcp.PubSub,
+      topic,
+      {:monitor_alert, monitor.id, payload}
+    )
+
+    Logger.debug("WebhookNotifier: Published SSE event to topic #{topic}")
   end
 end
