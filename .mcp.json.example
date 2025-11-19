@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "skyfi": {
+      "command": "skyfi-mcp",
+      "args": [],
+      "env": {
+        "SKYFI_MCP_SERVER_URL": "https://skyfi-mcp.fly.dev",
+        "SKYFI_MCP_ACCESS_KEY": "your_mcp_access_key_here",
+        "SKYFI_API_KEY": "your_skyfi_api_key_here"
+      }
+    }
+  }
+}

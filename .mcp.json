@@ -17,6 +17,14 @@
         "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
         "OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
       }
+    },
+    "skyfi": {
+      "command": "skyfi-mcp",
+      "args": [
+        "-s", "https://skyfi-mcp.fly.dev",
+        "-a", "sk_mcp_9a7312e31449dea2cd075997284c6f6b6261c0abebad48adc62a66bcd3e48aba",
+        "-k", "YOUR_SKYFI_API_KEY_HERE"
+      ]
     }
   }
 }
