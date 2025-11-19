@@ -255,13 +255,53 @@ This dual-credential system ensures:
 
 2. **SkyFi API Key**: Get your own from [skyfi.com/settings/api](https://www.skyfi.com/settings/api)
 
-### Configuration
+### Quick Start with npx (No Installation Required!)
+
+The easiest way to connect to a deployed SkyFi MCP server is using npx:
+
+```bash
+npx skyfi-mcp-client \
+  --server https://your-server.fly.dev \
+  --access-key sk_mcp_abc123... \
+  --api-key your_skyfi_api_key
+```
+
+Or use the short flags:
+```bash
+npx skyfi-mcp-client -s https://your-server.fly.dev -a sk_mcp_abc123... -k your_skyfi_api_key
+```
+
+**Benefits:**
+- ✅ No Elixir/Mix installation needed
+- ✅ Works from any machine with Node.js
+- ✅ Automatically uses latest version
+- ✅ Perfect for CI/CD pipelines
+
+### Configuration for Claude Desktop
 
 Edit Claude Desktop's MCP settings file:
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
-Add the SkyFi MCP server with **both credentials**:
+Add the SkyFi MCP server using npx (recommended):
+
+```json
+{
+  "mcpServers": {
+    "skyfi": {
+      "command": "npx",
+      "args": [
+        "skyfi-mcp-client",
+        "--server", "https://your-deployment.fly.dev",
+        "--access-key", "sk_mcp_your_access_key",
+        "--api-key", "your_personal_skyfi_api_key"
+      ]
+    }
+  }
+}
+```
+
+**Or use SSE transport (alternative):**
 
 ```json
 {
