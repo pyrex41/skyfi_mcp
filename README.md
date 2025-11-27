@@ -76,18 +76,35 @@ Edit your MCP settings file:
 
 ### Claude Code
 
-Add to `.mcp.json` in your project root or `~/.claude/mcp.json`:
+**Option A: CLI command (recommended)**
+
+```bash
+claude mcp add skyfi -- npx -y skyfi-mcp-client \
+  --server https://your-deployment.fly.dev \
+  --access-key sk_mcp_your_access_key \
+  --api-key your_skyfi_api_key
+```
+
+Add `-s user` flag to install globally across all projects.
+
+**Option B: Config file**
+
+The CLI command above writes to `~/.claude.json` under `projects.<project-path>.mcpServers`. You can also edit this directly:
 
 ```json
 {
-  "mcpServers": {
-    "skyfi": {
-      "command": "npx",
-      "args": ["-y", "skyfi-mcp-client"],
-      "env": {
-        "SKYFI_MCP_SERVER_URL": "https://your-deployment.fly.dev",
-        "SKYFI_MCP_ACCESS_KEY": "sk_mcp_your_access_key",
-        "SKYFI_API_KEY": "your_skyfi_api_key"
+  "projects": {
+    "/path/to/your/project": {
+      "mcpServers": {
+        "skyfi": {
+          "command": "npx",
+          "args": [
+            "-y", "skyfi-mcp-client",
+            "--server", "https://your-deployment.fly.dev",
+            "--access-key", "sk_mcp_your_access_key",
+            "--api-key", "your_skyfi_api_key"
+          ]
+        }
       }
     }
   }
@@ -159,7 +176,6 @@ Add to `~/.config/opencode/config.json`:
 | **npx bridge** | Most users | Node.js |
 | **HTTP** | Firewalls, debugging | HTTP client support |
 | **SSE** | Real-time updates | SSE client support |
-| **stdio (local)** | Development | Elixir runtime |
 
 ---
 
